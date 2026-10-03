@@ -10,4 +10,11 @@ declare global {
 	}
 }
 
+// Starsze iOS Safari wymaga atrybutu webkit-playsinline, którego nie ma w typach Svelte.
+declare module 'svelte/elements' {
+	interface HTMLVideoAttributes {
+		'webkit-playsinline'?: boolean | '' | undefined | null;
+	}
+}
+
 export {};

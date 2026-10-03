@@ -1,5 +1,4 @@
 <script lang="ts">
-	import splashVideo from '#lib/assets/animacjaWejscia.mp4';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 
@@ -23,24 +22,45 @@
 		}
 
 		videoElement.muted = true;
-		// case: autoplay blocked (np. Low Power Mode); prosto do apki
-		videoElement.play().catch(finish);
+		videoElement.defaultMuted = true;
+
+		function startPlayback() {
+			// case: autoplay blocked (np. Low Power Mode); prosto do apki
+			videoElement.play().catch((err) => {
+				console.warn('Splash video autoplay rejected:', err);
+				finish();
+			});
+		}
+
+		if (videoElement.readyState >= 2) {
+			startPlayback();
+		} else {
+			videoElement.addEventListener('loadeddata', startPlayback, { once: true });
+		}
+
 		const timeout = setTimeout(finish, MAX_DURATION_MS);
-		return () => clearTimeout(timeout);
+		return () => {
+			clearTimeout(timeout);
+			videoElement.removeEventListener('loadeddata', startPlayback);
+		};
 	});
 </script>
 
 <div class="splash" role="status" aria-label="Uruchamianie aplikacji" out:fade={{ duration: 300 }}>
 	<video
 		bind:this={videoElement}
-		src={splashVideo}
+		src="/animacjaWejscia.mp4"
 		autoplay
 		muted
 		playsinline
+		webkit-playsinline
 		preload="auto"
 		aria-hidden="true"
 		onended={finish}
-		onerror={finish}
+		onerror={(e) => {
+			console.error('Video error:', e);
+			finish();
+		}}
 	></video>
 	<button class="skip-btn" type="button" onclick={finish}>Pomiń</button>
 </div>
