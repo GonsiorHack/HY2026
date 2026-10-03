@@ -63,10 +63,13 @@
 	}
 
 	$effect(() => {
-		appName = getComputedStyle(document.documentElement)
-			.getPropertyValue('--nazwa-aplikacji')
-			.trim()
-			.replace(/^['"]|['"]$/g, '');
+		const styles = getComputedStyle(document.documentElement);
+		const readName = (token: string) =>
+			styles
+				.getPropertyValue(token)
+				.trim()
+				.replace(/^['"]|['"]$/g, '');
+		appName = `${readName('--nazwa-aplikacji-miasto')} ${readName('--nazwa-aplikacji-dopisek')}`;
 	});
 
 	$effect(() => {
@@ -76,11 +79,14 @@
 
 <main class="presentation">
 	<aside class="desktop-side-panel">
-		<p class="brand-title app-name"><span class="dot">.</span></p>
+		<p class="brand-title">
+			<span class="name-city"></span><span class="dot">,</span>
+			<span class="name-rest"></span>
+		</p>
 		<p class="description">
 			Mobilny panel miejski wspierający dostępność i poruszanie się po Krakowie - bez barier.
 		</p>
-		<div class="badge">Wersja demonstracyjna HackYeah2026</div>
+		<div class="badge">HackYeah2026</div>
 	</aside>
 
 	<div class="mobile-viewport">
@@ -218,8 +224,12 @@
 		background: var(--kolor-tla-logo);
 	}
 
-	.app-name::before {
-		content: var(--nazwa-aplikacji);
+	.name-city::before {
+		content: var(--nazwa-aplikacji-miasto);
+	}
+
+	.name-rest::before {
+		content: var(--nazwa-aplikacji-dopisek);
 	}
 
 	.screen-body {

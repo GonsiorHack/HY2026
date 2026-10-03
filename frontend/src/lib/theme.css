@@ -43,8 +43,12 @@
 	--kolor-opisu-pulpitu: #475569;
 	--kolor-plakietki-pulpitu: #0369a1;
 
-	/* Nazwa aplikacji - zmień tylko tutaj, a zmieni się w całej aplikacji. */
+	/* Nazwa aplikacji w dwóch częściach - zmień tylko tutaj, a zmieni się w całej aplikacji.
+	   Na komputerze tytuł wygląda tak: „Kraków. Bez Barier” (kropka w kolorze wyróżnienia). */
+	
 	--nazwa-aplikacji: 'Kraków Bez Barier';
+	--nazwa-aplikacji-miasto: 'Kraków';
+	--nazwa-aplikacji-dopisek: 'Bez Barier';
 
 	/* Czcionka całej aplikacji: Inter (ładowana lokalnie w +layout.svelte). */
 	--czcionka-podstawowa: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
