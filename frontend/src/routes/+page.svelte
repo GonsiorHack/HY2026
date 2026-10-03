@@ -80,7 +80,7 @@
 <main class="presentation">
 	<aside class="desktop-side-panel">
 		<p class="brand-title">
-			<span class="name-city"></span><span class="dot">,</span>
+			<span class="name-city"></span><span class="dot">,</span> <br>
 			<span class="name-rest"></span>
 		</p>
 		<p class="description">
