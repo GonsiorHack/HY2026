@@ -1,33 +1,163 @@
 :root {
-	--color-primary: #007aff;
-	--color-primary-contrast: #ffffff;
-	--color-primary-soft: #007aff33;
+	--kolor-wyroznienia: #007aff;
+	--kolor-tekstu-na-wyroznieniu: #ffffff;
+	--kolor-jasnego-tekstu: #ffffff;
+	--kolor-delikatnego-wyroznienia: #007aff33;
+	--kolor-tla-wylaczonego-przelacznika: #cbd5e1;
+	--kolor-galki-przelacznika: #ffffff;
 
-	--color-background: #f8fafc;
-	--color-surface: #ffffff;
-	--color-surface-overlay: #fffffff2;
-	--color-surface-muted: #f1f5f9;
-	--color-background-dark: #0f172a;
-	--color-surface-dark: #1e293b;
-	--color-black: #000000;
+	--kolor-tla-strony: #f8fafc;
+	--kolor-tla-karty: #ffffff;
+	--kolor-tla-przezroczystej-karty: #fffffff2;
+	--kolor-tla-elementu-drugorzednego: #f1f5f9;
+	--kolor-tla-ciemna: #0f172a;
+	--kolor-obudowy-telefonu: #1e293b;
+	--kolor-obramowania-telefonu: #334155;
+	/* Ramka telefonu w widoku komputerowym: ciemna w trybie jasnym, biała w ciemnym. */
+	--kolor-ramki-telefonu: #1f2937;
+	--kolor-krawedzi-ramki-telefonu: #000000;
+	/* Ekran startowy (animacja przy otwarciu aplikacji). */
+	--kolor-tla-ekranu-startowego: #ffffff;
+	--kolor-tla-przycisku-pomin: #0f172a99;
+	/* Niebieskie tło pod białym logo w górnym pasku (ten sam kolor co w animacji startowej). */
+	--kolor-tla-logo: #3063ab;
+	--kolor-tla-mapy: #e2e8f0;
+	--kolor-czarny: #000000;
 
-	--color-text: #0f172a;
-	--color-text-strong: #334155;
-	--color-text-muted: #64748b;
-	--color-text-subtle: #94a3b8;
-	--color-border: #e2e8f0;
+	--kolor-tekstu-podstawowego: #0f172a;
+	--kolor-tekstu-listy: #334155;
+	--kolor-tekstu-drugorzednego: #64748b;
+	--kolor-tekstu-pomocniczego: #94a3b8;
+	--kolor-obramowania: #e2e8f0;
 
-	--color-danger-background: #fef2f2;
-	--color-danger-border: #fecaca;
-	--color-danger-text: #991b1b;
-	--color-info-text: #38bdf8;
-	--color-shadow-device: #000000b3;
+	--kolor-tla-ostrzezenia: #fef2f2;
+	--kolor-obramowania-ostrzezenia: #fecaca;
+	--kolor-tekstu-ostrzezenia: #991b1b;
+	--kolor-tekstu-informacji: #38bdf8;
+	--kolor-cienia-telefonu: #0f172a40;
 
-	--font-family-sans: system-ui, -apple-system, sans-serif;
+	/* Widok komputerowy (tło wokół telefonu i tekst obok niego) - zmienia się razem z motywem. */
+	--kolor-tla-pulpitu: #e2e8f0;
+	--kolor-tla-pulpitu-rozjasnione: #f8fafc;
+	--kolor-tytulu-pulpitu: #0f172a;
+	--kolor-opisu-pulpitu: #475569;
+	--kolor-plakietki-pulpitu: #0369a1;
 
-	--radius-small: 6px;
-	--radius-medium: 10px;
-	--radius-large: 16px;
+	/* Nazwa aplikacji - zmień tylko tutaj, a zmieni się w całej aplikacji. */
+	--nazwa-aplikacji: 'Kraków Bez Barier';
 
-	--shadow-card: 0 1px 3px #0000000a;
+	/* Czcionka całej aplikacji: Inter (ładowana lokalnie w +layout.svelte). */
+	--czcionka-podstawowa: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
+
+	--zaokraglenie-male: 6px;
+	--zaokraglenie-srednie: 10px;
+	--zaokraglenie-duze: 16px;
+
+	--cien-karty: 0 1px 3px #0000000a;
+}
+
+:root[data-theme='dark'] {
+	--kolor-ramki-telefonu: #f1f5f9;
+	--kolor-krawedzi-ramki-telefonu: #ffffff;
+	--kolor-cienia-telefonu: #000000b3;
+
+	--kolor-tla-pulpitu: #0f172a;
+	--kolor-tla-pulpitu-rozjasnione: #1e293b;
+	--kolor-tytulu-pulpitu: #ffffff;
+	--kolor-opisu-pulpitu: #94a3b8;
+	--kolor-plakietki-pulpitu: #38bdf8;
+
+	--kolor-wyroznienia: #0a84ff;
+	--kolor-delikatnego-wyroznienia: #0a84ff33;
+	--kolor-tla-wylaczonego-przelacznika: #475569;
+	--kolor-galki-przelacznika: #f1f5f9;
+
+	--kolor-tla-strony: #0b1120;
+	--kolor-tla-karty: #1e293b;
+	--kolor-tla-przezroczystej-karty: #1e293bf2;
+	--kolor-tla-elementu-drugorzednego: #334155;
+	--kolor-tla-mapy: #334155;
+
+	--kolor-tekstu-podstawowego: #f1f5f9;
+	--kolor-tekstu-listy: #cbd5e1;
+	--kolor-tekstu-drugorzednego: #94a3b8;
+	--kolor-tekstu-pomocniczego: #94a3b8;
+	--kolor-obramowania: #334155;
+
+	--kolor-tla-ostrzezenia: #450a0a;
+	--kolor-obramowania-ostrzezenia: #7f1d1d;
+	--kolor-tekstu-ostrzezenia: #fecaca;
+}
+
+:root[data-contrast='high'] {
+	--kolor-ramki-telefonu: #000000;
+	--kolor-tla-pulpitu: #ffffff;
+	--kolor-tla-pulpitu-rozjasnione: #ffffff;
+	--kolor-tytulu-pulpitu: #000000;
+	--kolor-opisu-pulpitu: #000000;
+	--kolor-plakietki-pulpitu: #0040dd;
+
+	--kolor-wyroznienia: #0040dd;
+	--kolor-tekstu-na-wyroznieniu: #ffffff;
+	--kolor-delikatnego-wyroznienia: #0040dd26;
+	--kolor-tla-wylaczonego-przelacznika: #4b5563;
+	--kolor-galki-przelacznika: #ffffff;
+
+	--kolor-tla-strony: #ffffff;
+	--kolor-tla-karty: #ffffff;
+	--kolor-tla-przezroczystej-karty: #ffffff;
+	--kolor-tla-elementu-drugorzednego: #e5e7eb;
+	--kolor-tla-mapy: #d1d5db;
+
+	--kolor-tekstu-podstawowego: #000000;
+	--kolor-tekstu-listy: #000000;
+	--kolor-tekstu-drugorzednego: #1f2937;
+	--kolor-tekstu-pomocniczego: #374151;
+	--kolor-obramowania: #000000;
+
+	--kolor-tla-ostrzezenia: #ffffff;
+	--kolor-obramowania-ostrzezenia: #b91c1c;
+	--kolor-tekstu-ostrzezenia: #7f1d1d;
+
+	--cien-karty: none;
+}
+
+:root[data-theme='dark'][data-contrast='high'] {
+	--kolor-ramki-telefonu: #ffffff;
+	--kolor-tla-pulpitu: #000000;
+	--kolor-tla-pulpitu-rozjasnione: #000000;
+	--kolor-tytulu-pulpitu: #ffffff;
+	--kolor-opisu-pulpitu: #ffffff;
+	--kolor-plakietki-pulpitu: #4da3ff;
+
+	--kolor-wyroznienia: #4da3ff;
+	--kolor-tekstu-na-wyroznieniu: #000000;
+	--kolor-delikatnego-wyroznienia: #4da3ff33;
+	--kolor-tla-wylaczonego-przelacznika: #737373;
+	--kolor-galki-przelacznika: #ffffff;
+
+	--kolor-tla-strony: #000000;
+	--kolor-tla-karty: #000000;
+	--kolor-tla-przezroczystej-karty: #000000;
+	--kolor-tla-elementu-drugorzednego: #262626;
+	--kolor-tla-ciemna: #000000;
+	--kolor-tla-mapy: #262626;
+
+	--kolor-tekstu-podstawowego: #ffffff;
+	--kolor-tekstu-listy: #ffffff;
+	--kolor-tekstu-drugorzednego: #e5e5e5;
+	--kolor-tekstu-pomocniczego: #d4d4d4;
+	--kolor-obramowania: #ffffff;
+
+	--kolor-tla-ostrzezenia: #000000;
+	--kolor-obramowania-ostrzezenia: #ff6b6b;
+	--kolor-tekstu-ostrzezenia: #ffffff;
+}
+
+:root[data-text-size='large'] {
+	font-size: 112.5%;
+}
+
+:root[data-text-size='x-large'] {
+	font-size: 125%;
 }
