@@ -45,7 +45,7 @@
 
 	/* Nazwa aplikacji w dwóch częściach - zmień tylko tutaj, a zmieni się w całej aplikacji.
 	   Na komputerze tytuł wygląda tak: „Kraków. Bez Barier” (kropka w kolorze wyróżnienia). */
-	
+
 	--nazwa-aplikacji: 'Kraków Bez Barier';
 	--nazwa-aplikacji-miasto: 'Kraków';
 	--nazwa-aplikacji-dopisek: 'Bez Barier';
@@ -56,8 +56,31 @@
 	--zaokraglenie-male: 6px;
 	--zaokraglenie-srednie: 10px;
 	--zaokraglenie-duze: 16px;
+	--zaokraglenie-pelne: 999px;
+
+	/* Odstępy (marginesy i wewnętrzne marginesy elementów). */
+	--odstep-bardzo-maly: 4px;
+	--odstep-maly: 8px;
+	--odstep-sredni: 12px;
+	--odstep-duzy: 16px;
 
 	--cien-karty: 0 1px 3px #0000000a;
+
+	/* Mapa z trasami (karta "Trasa"). */
+	--kolor-trasy-standardowej: #64748b;
+	--kolor-trasy-bez-barier: #15803d;
+	--kolor-punktu-startu: #007aff;
+	--kolor-punktu-celu: #dc2626;
+	--kolor-tekstu-na-znaczniku: #ffffff;
+	--kolor-obwodki-znacznika: #ffffff;
+	--grubosc-linii-trasy: 5px;
+	--wzor-przerywanej-trasy: 2 10;
+	--rozmiar-znacznika-mapy: 32px;
+	--grubosc-obwodki-znacznika: 3px;
+	--cien-panelu-mapy: 0 4px 16px #0f172a2e;
+	--cien-znacznika-mapy: 0 2px 6px #0f172a59;
+	/* Filtr podkładu mapy: w trybie jasnym bez zmian, w ciemnym przyciemnia kafelki OpenStreetMap. */
+	--filtr-kafelkow-mapy: none;
 }
 
 :root[data-theme='dark'] {
@@ -91,6 +114,16 @@
 	--kolor-tla-ostrzezenia: #450a0a;
 	--kolor-obramowania-ostrzezenia: #7f1d1d;
 	--kolor-tekstu-ostrzezenia: #fecaca;
+
+	--kolor-trasy-standardowej: #94a3b8;
+	--kolor-trasy-bez-barier: #4ade80;
+	--kolor-punktu-startu: #0a84ff;
+	--kolor-punktu-celu: #f87171;
+	--kolor-tekstu-na-znaczniku: #0b1120;
+	--kolor-obwodki-znacznika: #0b1120;
+	--cien-panelu-mapy: 0 4px 16px #00000080;
+	--cien-znacznika-mapy: 0 2px 6px #000000a6;
+	--filtr-kafelkow-mapy: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
 }
 
 :root[data-contrast='high'] {
@@ -123,7 +156,17 @@
 	--kolor-obramowania-ostrzezenia: #b91c1c;
 	--kolor-tekstu-ostrzezenia: #7f1d1d;
 
+	--kolor-trasy-standardowej: #000000;
+	--kolor-trasy-bez-barier: #006b1f;
+	--kolor-punktu-startu: #0040dd;
+	--kolor-punktu-celu: #b00000;
+	--kolor-tekstu-na-znaczniku: #ffffff;
+	--kolor-obwodki-znacznika: #000000;
+	--grubosc-linii-trasy: 6px;
+
 	--cien-karty: none;
+	--cien-panelu-mapy: none;
+	--cien-znacznika-mapy: none;
 }
 
 :root[data-theme='dark'][data-contrast='high'] {
@@ -156,6 +199,13 @@
 	--kolor-tla-ostrzezenia: #000000;
 	--kolor-obramowania-ostrzezenia: #ff6b6b;
 	--kolor-tekstu-ostrzezenia: #ffffff;
+
+	--kolor-trasy-standardowej: #ffffff;
+	--kolor-trasy-bez-barier: #5cff8a;
+	--kolor-punktu-startu: #4da3ff;
+	--kolor-punktu-celu: #ff6b6b;
+	--kolor-tekstu-na-znaczniku: #000000;
+	--kolor-obwodki-znacznika: #ffffff;
 }
 
 :root[data-text-size='large'] {

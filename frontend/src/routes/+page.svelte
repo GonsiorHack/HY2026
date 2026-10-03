@@ -80,7 +80,7 @@
 <main class="presentation">
 	<aside class="desktop-side-panel">
 		<p class="brand-title">
-			<span class="name-city"></span><span class="dot">.</span> <br>
+			<span class="name-city"></span><span class="dot">.</span> <br />
 			<span class="name-rest"></span>
 		</p>
 		<p class="description">
@@ -244,6 +244,11 @@
 
 	.tab-panel.active {
 		display: block;
+	}
+
+	/* mapa sie wyplewa, nie rosnie z contentem */
+	.tab-panel.active:has(:global(.map-tab)) {
+		height: 100%;
 	}
 
 	.bottom-bar {

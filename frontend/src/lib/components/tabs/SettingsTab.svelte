@@ -40,7 +40,7 @@
 		<label class="switch-row">
 			<span class="switch-text">
 				<span class="field-label">Wysoki kontrast</span>
-				<small>Wzmacnia kolory tekstu, obramowań i przycisków w wybranym motywie.</small>
+				<small>Wzmacnia kolory tekstu, obramowań i przycisków.</small>
 			</span>
 			<input class="switch" type="checkbox" role="switch" bind:checked={settings.highContrast} />
 		</label>
@@ -72,7 +72,7 @@
 		<label class="switch-row">
 			<span class="switch-text">
 				<span class="field-label">Wizualne alerty komunikacji</span>
-				<small>Pokazuj ostrzeżenia o awariach wind i utrudnieniach w MPK.</small>
+				<small>Pokazuj ostrzeżenia o awariach i utrudnieniach w MPK.</small>
 			</span>
 			<input
 				class="switch"
