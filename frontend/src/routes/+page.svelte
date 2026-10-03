@@ -77,7 +77,7 @@
 				.getPropertyValue(token)
 				.trim()
 				.replace(/^['"]|['"]$/g, '');
-		appName = `${readName('--nazwa-aplikacji-miasto')} ${readName('--nazwa-aplikacji-dopisek')}`;
+		appName = `${readName('--nazwa-aplikacji')}`;
 	});
 
 	$effect(() => {
@@ -88,7 +88,7 @@
 <main class="presentation">
 	<aside class="desktop-side-panel">
 		<p class="brand-title">
-			<span class="name-city"></span><span class="dot">.</span> <br />
+			<span class="appName">{appName}</span><span class="dot">?</span> <br />
 			<span class="name-rest"></span>
 		</p>
 		<p class="description">
@@ -223,18 +223,24 @@
 		border-bottom: 1px solid var(--kolor-obramowania);
 		background: var(--kolor-tla-karty);
 	}
-    
+
 	.map-attribution {
 		flex-basis: 100%;
 		margin: 0;
+		overflow: hidden;
 		color: var(--kolor-tekstu-podstawowego);
-		font-size: 0.625rem;
-		line-height: 1.4;
+		font-size: 0.5625rem;
+		line-height: 1.3;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
+	/* Subtle: secondary text colour + thin underline instead of the bright accent. */
 	.map-attribution :global(a) {
-		color: var(--kolor-wyroznienia);
-		text-decoration: none;
+		color: var(--kolor-tekstu-drugorzednego);
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 2px;
 	}
 
 	.map-attribution :global(a:focus-visible) {
