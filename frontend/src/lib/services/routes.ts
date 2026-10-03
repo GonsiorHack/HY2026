@@ -33,10 +33,8 @@ const API_BASE_URL: string | undefined =
 
 export const USING_MOCK_ROUTES = !API_BASE_URL;
 
-// Backend normally answers in ~1.5 s; don't keep the user waiting long when the tunnel is down.
 const REQUEST_TIMEOUT_MS = 10_000;
 
-/** Demo points within this distance use the recorded real backend response as the fallback. */
 const DEMO_MATCH_RADIUS_M = 30;
 
 // Darmowe tunele ngrok zwracaja strone ostrzegawcza w HTML, chyba ze wyslyamy ten naglowek.
@@ -102,11 +100,9 @@ export async function fetchRouteComparison(
 		if (errors.length > 0) console.warn('Some routes could not be loaded:', errors);
 		return sortRoutes(dedupeIds(routes));
 	}
-	// Prefer the most specific reason: no-route > network > server.
 	const priority = ['no-route', 'network', 'server'];
 	errors.sort((a, b) => priority.indexOf(a.kind) - priority.indexOf(b.kind));
 	const error = errors[0] ?? new RouteApiError('no-route', 'Backend returned no usable route');
-	// Backend unreachable / crashed (not "no route exists"): show a hard-coded fallback path.
 	if (error.kind === 'network' || error.kind === 'server') {
 		console.warn('Routing backend unavailable, using fallback routes:', error);
 		return getFallbackRoutes(start, destination);
@@ -114,11 +110,6 @@ export async function fetchRouteComparison(
 	throw error;
 }
 
-/**
- * Offline fallback used when the backend can't be reached. For the presentation demo points
- * it returns the recorded real backend response (`data/demoRoutes.json`), otherwise mock routes.
- * Every returned route has `fallback: true`.
- */
 export function getFallbackRoutes(start: LatLngTuple, destination: LatLngTuple): RouteResponse {
 	const isDemo =
 		distanceMeters(start, [DEMO_ROUTE.start.lat, DEMO_ROUTE.start.lng]) <= DEMO_MATCH_RADIUS_M &&
@@ -289,7 +280,6 @@ function toRouteInfo({ properties, geometry }: RouteFeature, index: number): Rou
 		distanceMeters: properties.distance_m,
 		durationMinutes: properties.time_minutes,
 		note: properties.warning ?? properties.info,
-		// GeoJSON is [lng, lat]; Leaflet expects [lat, lng].
 		coordinates: geometry.coordinates.map(([lng, lat]) => [lat, lng])
 	};
 }

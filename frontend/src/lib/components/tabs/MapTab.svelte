@@ -20,7 +20,6 @@
 	interface Toast {
 		message: string;
 		tone: 'error' | 'warning' | 'info';
-		/** Shows a "Spróbuj ponownie" button (network / server failures). */
 		retry?: boolean;
 	}
 
@@ -36,7 +35,6 @@
 	let start = $state<Waypoint | null>(null);
 	let destination = $state<Waypoint | null>(null);
 	let routes = $state<RouteResponse | null>(null);
-	/** Both endpoints returned the same geometry - only one route is drawn and listed. */
 	let identicalRoutes = $state(false);
 	let loading = $state(false);
 	let toast = $state<Toast | null>(null);
@@ -60,7 +58,6 @@
 					: 'Przeciągnij A lub B, aby zmienić trasę.'
 	);
 
-	// Auto-hide informational toasts; ones with a retry action stay until handled.
 	$effect(() => {
 		if (!toast || toast.retry) return;
 		const timer = setTimeout(() => (toast = null), TOAST_TIMEOUT_MS);
@@ -75,7 +72,6 @@
 			if (destroyed) return;
 			L = module.default;
 
-			// Attribution is rendered in the app's top bar (MAP_ATTRIBUTION_HTML), not over the map.
 			map = L.map(mapContainer, { zoomControl: false, attributionControl: false }).setView(
 				KRAKOW_CENTER,
 				DEFAULT_ZOOM
@@ -85,7 +81,6 @@
 				subdomains: TILE_SUBDOMAINS,
 				maxZoom: 19
 			}).addTo(map);
-			// Routes below markers, so A/B stay grabbable on top of the lines.
 			routesLayer = L.layerGroup().addTo(map);
 			markersLayer = L.layerGroup().addTo(map);
 			map.on('click', handleMapClick);
@@ -107,8 +102,6 @@
 		};
 	});
 
-	// --- Point selection ---
-
 	function handleMapClick(event: Leaflet.LeafletMouseEvent) {
 		if (loading) return;
 		const point: Waypoint = { lat: event.latlng.lat, lng: event.latlng.lng };
@@ -119,7 +112,6 @@
 			toast = null;
 			return;
 		}
-		// Both points set: changes happen by dragging the markers (or "Wyczyść").
 		if (destination) return;
 
 		if (isTooClose(start, point)) {
@@ -173,7 +165,6 @@
 		requestRoutes();
 	}
 
-	/** Places the preset A/B markers, frames them and fetches both routes. */
 	function loadDemoRoute() {
 		if (!map) return;
 		start = { ...DEMO_ROUTE.start };
@@ -204,8 +195,6 @@
 			message: 'Start i cel są w tym samym miejscu. Wybierz cel w innym punkcie.'
 		};
 	}
-
-	// --- Backend request ---
 
 	async function requestRoutes() {
 		if (!start || !destination) return;
@@ -279,15 +268,12 @@
 		}
 	}
 
-	/** Invalidates any in-flight request so its result is ignored. */
 	function cancelRequest() {
 		requestId++;
 		abortController?.abort();
 		abortController = undefined;
 		loading = false;
 	}
-
-	// --- Drawing ---
 
 	function clearRoutes() {
 		routesLayer?.clearLayers();
@@ -299,7 +285,6 @@
 	async function drawRoutes(response: RouteResponse) {
 		if (!L || !map || !routesLayer) return;
 
-		// Barrier routes first so the wheelchair-safe ones are drawn on top.
 		for (const route of [...response].reverse()) {
 			L.polyline(route.coordinates, {
 				className: `route-line route-line--${route.type}`,
@@ -602,12 +587,13 @@
 	}
 
 	.demo-btn {
-		padding: var(--odstep-bardzo-maly) var(--odstep-maly);
+		min-height: 36px;
+		padding: var(--odstep-maly) var(--odstep-duzy);
 		border: 1px solid var(--kolor-obramowania);
 		border-radius: var(--zaokraglenie-pelne);
 		background: var(--kolor-tla-przezroczystej-karty);
 		color: var(--kolor-tekstu-drugorzednego);
-		font-size: 0.75rem;
+		font-size: 0.8125rem;
 		font-weight: 600;
 		cursor: pointer;
 	}

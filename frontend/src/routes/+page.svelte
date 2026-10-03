@@ -103,11 +103,13 @@
 		{/if}
 
 		<header class="status-bar" inert={showSplash}>
-			<span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+			<span class="clock"
+				>{new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span
+			>
 			<div class="island"></div>
 			<div class="indicators">
 				<span class="signal">●●●</span>
-				<span>T-Mobile</span>
+				<span class="carrier">T-Mobile</span>
 				<span>84%</span>
 			</div>
 		</header>
@@ -170,6 +172,7 @@
 		display: flex;
 		width: 100vw;
 		height: 100dvh;
+		min-height: 100vh;
 		overflow: hidden;
 		background: var(--kolor-tla-pulpitu);
 	}
@@ -192,24 +195,34 @@
 	/*  pasek telefonu tylko desktop. */
 	.status-bar {
 		display: none;
-		height: 44px;
+		flex-shrink: 0;
+		height: 50px;
+		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
-		justify-content: space-between;
-		padding: 0 16px;
+		column-gap: 8px;
+		padding: 8px 30px 0;
+		background: var(--kolor-tla-karty);
 		font-size: 13px;
 		font-weight: 600;
+		white-space: nowrap;
+	}
+
+	.clock {
+		justify-self: start;
 	}
 
 	.island {
-		width: 90px;
-		height: 22px;
-		border-radius: 12px;
+		width: 92px;
+		height: 26px;
+		border-radius: var(--zaokraglenie-pelne);
 		background: var(--kolor-czarny);
 	}
 
 	.indicators {
 		display: flex;
-		gap: 6px;
+		justify-self: end;
+		align-items: center;
+		gap: 5px;
 		font-size: 11px;
 	}
 
@@ -219,7 +232,7 @@
 		align-items: center;
 		justify-content: space-between;
 		row-gap: 6px;
-		padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+		padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 12px;
 		border-bottom: 1px solid var(--kolor-obramowania);
 		background: var(--kolor-tla-karty);
 	}
@@ -227,6 +240,7 @@
 	.map-attribution {
 		flex-basis: 100%;
 		margin: 0;
+		padding: 6px 0 2px;
 		overflow: hidden;
 		color: var(--kolor-tekstu-podstawowego);
 		font-size: 0.5625rem;
@@ -235,11 +249,13 @@
 		white-space: nowrap;
 	}
 
-	/* Subtle: secondary text colour + thin underline instead of the bright accent. */
 	.map-attribution :global(a) {
 		color: var(--kolor-tekstu-drugorzednego);
+		text-decoration: none;
+	}
+
+	.map-attribution :global(a:hover) {
 		text-decoration: underline;
-		text-decoration-thickness: 1px;
 		text-underline-offset: 2px;
 	}
 
@@ -291,10 +307,12 @@
 
 	.bottom-bar {
 		display: grid;
-		min-height: 64px;
+		min-height: 72px;
+		flex-shrink: 0;
 		grid-template-columns: repeat(4, 1fr);
-		padding-bottom: env(safe-area-inset-bottom, 0px);
-		border-top: 1px solid var(--kolor-obramowania);
+		padding-top: 8px;
+		padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+		border-top: 2px solid var(--kolor-obramowania-nawigacji);
 		background: var(--kolor-tla-karty);
 	}
 
@@ -335,11 +353,16 @@
 		}
 
 		.status-bar {
-			display: flex;
+			display: grid;
 		}
 
 		.top-nav {
-			padding-top: 10px;
+			padding-top: 14px;
+		}
+
+		.bottom-bar {
+			padding-inline: 14px;
+			padding-bottom: 14px;
 		}
 
 		.desktop-side-panel {
@@ -379,6 +402,7 @@
 
 		.mobile-viewport {
 			/* Proporcje ekranu 1170 × 2532 px */
+			align-self: center;
 			flex-shrink: 0;
 			width: auto;
 			height: min(844px, calc(100dvh - 60px));
@@ -388,6 +412,12 @@
 				0 25px 60px -15px var(--kolor-cienia-telefonu),
 				0 0 0 7px var(--kolor-ramki-telefonu),
 				0 0 0 8px var(--kolor-krawedzi-ramki-telefonu);
+		}
+	}
+
+	@media (min-width: 600px) and (max-height: 760px) {
+		.carrier {
+			display: none;
 		}
 	}
 </style>

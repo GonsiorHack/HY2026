@@ -32,18 +32,22 @@
 	--kolor-tekstu-informacji: #38bdf8;
 
 	/* Widok komputerowy (tło wokół telefonu, tekst obok niego i ramka telefonu).
-	   STAŁY - nie zmienia się przy przełączaniu motywu ani wysokiego kontrastu w aplikacji,
-	   dlatego tych zmiennych nie nadpisujemy w blokach motywów poniżej. */
-	--kolor-tla-pulpitu: #0f172a;
-	--kolor-tla-pulpitu-rozjasnione: #1e293b;
-	--kolor-tytulu-pulpitu: #ffffff;
-	--kolor-opisu-pulpitu: #94a3b8;
+	   Zmienia się razem z motywem (wersja ciemna w bloku [data-theme='dark']).
+	   Ramka telefonu ma kolor kontrastowy do tła: ciemna na jasnym pulpicie, jasna na ciemnym.
+	   Wysoki kontrast nie zmienia pulpitu (dotyczy tylko wnętrza aplikacji). */
+	--kolor-tla-pulpitu: #f3f4f6;
+	--kolor-tla-pulpitu-rozjasnione: #ffffff;
+	--kolor-tytulu-pulpitu: #0f172a;
+	--kolor-opisu-pulpitu: #475569;
 	--kolor-kropki-pulpitu: #007aff;
-	--kolor-tla-plakietki-pulpitu: #007aff33;
-	--kolor-plakietki-pulpitu: #38bdf8;
-	--kolor-ramki-telefonu: #f1f5f9;
-	--kolor-krawedzi-ramki-telefonu: #ffffff;
-	--kolor-cienia-telefonu: #000000b3;
+	--kolor-tla-plakietki-pulpitu: #007aff1a;
+	--kolor-plakietki-pulpitu: #0369a1;
+	--kolor-ramki-telefonu: #1e293b;
+	--kolor-krawedzi-ramki-telefonu: #0f172a;
+	--kolor-cienia-telefonu: #0f172a66;
+
+	/* Górna krawędź dolnego paska nawigacji (wyraźniejsza niż zwykłe obramowanie). */
+	--kolor-obramowania-nawigacji: #cbd5e1;
 
 	/* Nazwa aplikacji w dwóch częściach - zmień tylko tutaj, a zmieni się w całej aplikacji.
 	   Na komputerze tytuł wygląda tak: „Kraków. Bez Barier” (kropka w kolorze wyróżnienia). */
@@ -123,6 +127,18 @@
 	/* Cień pływających paneli aplikacji nad mapą (podpowiedź, podsumowanie tras). */
 	--cien-panelu-mapy: 0 4px 16px #00000080;
 
+	--kolor-obramowania-nawigacji: #475569;
+
+	--kolor-tla-pulpitu: #0f172a;
+	--kolor-tla-pulpitu-rozjasnione: #1e293b;
+	--kolor-tytulu-pulpitu: #ffffff;
+	--kolor-opisu-pulpitu: #94a3b8;
+	--kolor-tla-plakietki-pulpitu: #007aff33;
+	--kolor-plakietki-pulpitu: #38bdf8;
+	--kolor-ramki-telefonu: #e2e8f0;
+	--kolor-krawedzi-ramki-telefonu: #ffffff;
+	--kolor-cienia-telefonu: #000000b3;
+
 	--kolor-sukcesu: #4ade80;
 	--kolor-tla-sukcesu: #052e16;
 	--kolor-tla-zaciemnienia: #000000a6;
@@ -146,6 +162,7 @@
 	--kolor-tekstu-drugorzednego: #1f2937;
 	--kolor-tekstu-pomocniczego: #374151;
 	--kolor-obramowania: #000000;
+	--kolor-obramowania-nawigacji: #000000;
 
 	--kolor-tla-ostrzezenia: #ffffff;
 	--kolor-obramowania-ostrzezenia: #b91c1c;
@@ -188,6 +205,7 @@
 	--kolor-tekstu-drugorzednego: #e5e5e5;
 	--kolor-tekstu-pomocniczego: #d4d4d4;
 	--kolor-obramowania: #ffffff;
+	--kolor-obramowania-nawigacji: #ffffff;
 
 	--kolor-tla-ostrzezenia: #000000;
 	--kolor-obramowania-ostrzezenia: #ff6b6b;

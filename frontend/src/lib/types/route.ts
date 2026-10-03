@@ -5,21 +5,14 @@ export interface Waypoint {
 	lng: number;
 }
 
-// --- Backend response format (GeoJSON, see `assets/przejazd.txt`) ---
-
-/** GeoJSON position: `[longitude, latitude]` - note the order is the reverse of Leaflet's. */
 export type GeoJsonPosition = [number, number];
 
 export interface RouteFeatureProperties {
-	/** Backend route identifier, e.g. `"wheelchair_accessible"`. */
 	route_type: string;
 	distance_m: number;
 	time_minutes: number;
-	/** `true` = the whole route is passable for a wheelchair; `false` = it has barriers. */
 	is_wheelchair_safe: boolean;
-	/** Optional explanation, e.g. which barriers the route avoids. */
 	info?: string;
-	/** Optional caution, e.g. "may contain stairs or rough cobblestones". */
 	warning?: string;
 }
 
@@ -37,9 +30,6 @@ export interface RouteFeatureCollection {
 	features: RouteFeature[];
 }
 
-// --- Format used by the UI (after parsing) ---
-
-/** Drives styling: `wheelchair` = safe (green, dotted), `standard` = has barriers (grey, solid). */
 export type RouteType = 'standard' | 'wheelchair';
 
 export interface RouteInfo {
@@ -50,20 +40,11 @@ export interface RouteInfo {
 	isWheelchairSafe: boolean;
 	distanceMeters: number;
 	durationMinutes: number;
-	/** Backend `info` / `warning` text shown under the route. */
 	note?: string;
-	/** Hard-coded offline route shown because the backend was unavailable. */
 	fallback?: boolean;
-	/** Leaflet order: `[latitude, longitude]`. */
 	coordinates: LatLngTuple[];
 }
 
-/** Wheelchair-safe routes first. May contain one route (like the sample) or several. */
 export type RouteResponse = RouteInfo[];
 
-/** Why a route request failed - drives the message shown to the user. */
-export type RouteErrorKind =
-	| 'no-route' // backend could not connect the points (e.g. outside the routing area)
-	| 'network' // no connection / server offline
-	| 'server' // backend error or unexpected response
-	| 'aborted'; // superseded by a newer request or reset
+export type RouteErrorKind = 'no-route' | 'network' | 'server' | 'aborted';

@@ -1,15 +1,6 @@
 <script lang="ts">
 	import { onDestroy, tick } from 'svelte';
 
-	/**
-	 * Obstacle report flow (demo / mock):
-	 * camera FAB -> contextual menu -> native camera (`<input capture="environment">`)
-	 * -> 2 s "processing" -> mock success dialog.
-	 *
-	 * iOS Safari only opens the camera from a direct user gesture, so `fileInput.click()`
-	 * is called synchronously inside the "Uruchom aparat" click handler.
-	 */
-
 	const PROCESSING_MS = 2000;
 	const MENU_TEXT = 'Zgłoś przeszkodę na trasie.';
 	const SUCCESS_TEXT =
@@ -41,14 +32,12 @@
 	}
 
 	function openCamera() {
-		// Must stay synchronous within the click (user gesture) for iOS.
 		fileInput.click();
 		phase = 'idle';
 	}
 
 	function handlePhoto() {
 		const file = fileInput.files?.[0];
-		// Reset so the same photo can be picked again next time.
 		fileInput.value = '';
 		if (!file) return;
 

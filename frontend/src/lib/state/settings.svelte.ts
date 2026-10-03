@@ -48,8 +48,7 @@ function isOption<T extends string>(options: Option<T>[], value: unknown): value
 }
 
 class AppSettings {
-	theme = $state<Theme>('light');
-	// Works on top of the chosen theme: boosts contrast of light or dark mode.
+	theme = $state<Theme>('dark');
 	highContrast = $state(false);
 	textSize = $state<TextSize>('standard');
 	mobilityProfile = $state<MobilityProfile>('manual-wheelchair');
@@ -72,7 +71,6 @@ class AppSettings {
 		const values = saved as Record<string, unknown>;
 		if (isOption(themes, values.theme)) this.theme = values.theme;
 		if (typeof values.highContrast === 'boolean') this.highContrast = values.highContrast;
-		// Older saves stored high contrast as a third "contrast" theme (black background).
 		if (values.theme === 'contrast') {
 			this.theme = 'dark';
 			this.highContrast = true;
@@ -104,9 +102,7 @@ class AppSettings {
 		});
 		try {
 			storage.setItem(STORAGE_KEY, snapshot);
-		} catch {
-			// Storage can be unavailable, e.g. in private browsing; settings then last for the session.
-		}
+		} catch {}
 	}
 }
 
