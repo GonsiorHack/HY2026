@@ -52,6 +52,8 @@ export interface RouteInfo {
 	durationMinutes: number;
 	/** Backend `info` / `warning` text shown under the route. */
 	note?: string;
+	/** Hard-coded offline route shown because the backend was unavailable. */
+	fallback?: boolean;
 	/** Leaflet order: `[latitude, longitude]`. */
 	coordinates: LatLngTuple[];
 }

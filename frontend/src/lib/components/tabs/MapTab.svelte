@@ -226,7 +226,14 @@
 			const { routes: visibleRoutes, identical } = collapseIdenticalRoutes(response);
 			routes = visibleRoutes;
 			identicalRoutes = identical;
-			if (!visibleRoutes.some((route) => route.isWheelchairSafe)) {
+			if (visibleRoutes.some((route) => route.fallback)) {
+				toast = {
+					tone: 'warning',
+					retry: true,
+					message:
+						'Serwer tras jest niedostępny - pokazano trasę zapasową (offline). Spróbuj ponownie za chwilę.'
+				};
+			} else if (!visibleRoutes.some((route) => route.isWheelchairSafe)) {
 				toast = {
 					tone: 'warning',
 					message:
@@ -417,6 +424,8 @@
 			</ul>
 			{#if USING_MOCK_ROUTES}
 				<p class="summary-note">Dane przykładowe - trasy wyznaczy serwer.</p>
+			{:else if routes.some((route) => route.fallback)}
+				<p class="summary-note">Trasa zapasowa (offline) - serwer tras jest niedostępny.</p>
 			{/if}
 		</div>
 	{/if}
