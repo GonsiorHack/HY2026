@@ -9,6 +9,7 @@
 	import logo from '#lib/assets/KBB/1.svg';
 	import type { Component } from 'svelte';
 	import { settings } from '../lib/state/settings.svelte';
+	import { MAP_ATTRIBUTION_HTML } from '../lib/config/map';
 	import type { Tab } from '../lib/types/navigation';
 
 	const tabs: {
@@ -115,6 +116,9 @@
 			<h1 class="brand">
 				<img src={logoSrc} alt={appName} class="logo-icon" />
 			</h1>
+			{#if activeTab === 'map'}
+				<p class="map-attribution">{@html MAP_ATTRIBUTION_HTML}</p>
+			{/if}
 		</section>
 
 		<section class="screen-body" aria-label="Zawartość karty" inert={showSplash}>
@@ -211,11 +215,31 @@
 
 	.top-nav {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
+		row-gap: 6px;
 		padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
 		border-bottom: 1px solid var(--kolor-obramowania);
 		background: var(--kolor-tla-karty);
+	}
+    
+	.map-attribution {
+		flex-basis: 100%;
+		margin: 0;
+		color: var(--kolor-tekstu-podstawowego);
+		font-size: 0.625rem;
+		line-height: 1.4;
+	}
+
+	.map-attribution :global(a) {
+		color: var(--kolor-wyroznienia);
+		text-decoration: none;
+	}
+
+	.map-attribution :global(a:focus-visible) {
+		outline: 2px solid var(--kolor-wyroznienia);
+		outline-offset: 1px;
 	}
 
 	.brand {

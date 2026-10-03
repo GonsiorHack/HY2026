@@ -9,18 +9,10 @@
 		formatDuration
 	} from '../../services/routes';
 	import type { LatLngTuple, RouteInfo, RouteResponse, Waypoint } from '../../types/route';
+	import { TILE_SUBDOMAINS, TILE_URL } from '../../config/map';
 
 	const KRAKOW_CENTER: LatLngTuple = [50.06768366766956, 19.989913515829258];
 	const DEFAULT_ZOOM = 16;
-	// Humanitarian OpenStreetMap (HOT) - highlights footways, steps and amenities.
-	const TILE_URL = 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png';
-	const TILE_SUBDOMAINS = ['a', 'b', 'c'];
-	const TILE_ATTRIBUTION =
-		'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, ' +
-		'Tiles style by <a href="https://www.hotosm.org/" target="_blank" rel="noopener">Humanitarian OpenStreetMap Team</a> ' +
-		'hosted by <a href="https://openstreetmap.fr/" target="_blank" rel="noopener">OSM France</a>';
-	const ATTRIBUTION_PREFIX =
-		'<a href="https://leafletjs.com" target="_blank" rel="noopener" title="A JavaScript library for interactive maps">Leaflet</a>';
 
 	let mapContainer: HTMLDivElement;
 	let hintBar = $state<HTMLElement>();
@@ -59,11 +51,13 @@
 			if (destroyed) return;
 			L = module.default;
 
-			map = L.map(mapContainer, { zoomControl: false }).setView(KRAKOW_CENTER, DEFAULT_ZOOM);
-			map.attributionControl.setPrefix(ATTRIBUTION_PREFIX);
+			// Attribution is rendered in the app's top bar (MAP_ATTRIBUTION_HTML), not over the map.
+			map = L.map(mapContainer, { zoomControl: false, attributionControl: false }).setView(
+				KRAKOW_CENTER,
+				DEFAULT_ZOOM
+			);
 			zoomControl = L.control.zoom({ position: 'bottomright' }).addTo(map);
 			L.tileLayer(TILE_URL, {
-				attribution: TILE_ATTRIBUTION,
 				subdomains: TILE_SUBDOMAINS,
 				maxZoom: 19
 			}).addTo(map);
@@ -421,15 +415,6 @@
 		border-bottom-color: var(--kolor-obramowania-kontrolek-mapy);
 		background: var(--kolor-tla-kontrolek-mapy);
 		color: var(--kolor-tekstu-kontrolek-mapy);
-	}
-
-	.map-canvas :global(.leaflet-control-attribution) {
-		background: var(--kolor-tla-kontrolek-mapy);
-		color: var(--kolor-tekstu-kontrolek-mapy);
-	}
-
-	.map-canvas :global(.leaflet-control-attribution a) {
-		color: var(--kolor-linku-mapy);
 	}
 
 	.map-canvas :global(.route-line) {
