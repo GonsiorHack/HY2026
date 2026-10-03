@@ -49,7 +49,7 @@
 	   Na komputerze tytuł wygląda tak: „Kraków. Bez Barier” (kropka w kolorze wyróżnienia). */
 
 	--nazwa-aplikacji: 'czyPrzejade';
-	--nazwa-aplikacji-dopisek: 'KrakówBez Barier';
+	--nazwa-aplikacji-dopisek: 'Kraków Bez Barier';
 
 	/* Czcionka całej aplikacji: Inter (ładowana lokalnie w +layout.svelte). */
 	--czcionka-podstawowa: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;

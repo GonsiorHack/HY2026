@@ -3,45 +3,68 @@
 	import type * as Leaflet from 'leaflet';
 	import { onMount, tick } from 'svelte';
 	import {
+		MIN_ROUTE_DISTANCE_M,
+		RouteApiError,
 		USING_MOCK_ROUTES,
+		collapseIdenticalRoutes,
+		distanceMeters,
 		fetchRouteComparison,
 		formatDistance,
 		formatDuration
 	} from '../../services/routes';
 	import type { LatLngTuple, RouteInfo, RouteResponse, Waypoint } from '../../types/route';
-	import { TILE_SUBDOMAINS, TILE_URL } from '../../config/map';
+	import { DEMO_ROUTE, TILE_SUBDOMAINS, TILE_URL } from '../../config/map';
+
+	type WaypointKind = 'start' | 'destination';
+	interface Toast {
+		message: string;
+		tone: 'error' | 'warning' | 'info';
+		/** Shows a "Spróbuj ponownie" button (network / server failures). */
+		retry?: boolean;
+	}
 
 	const KRAKOW_CENTER: LatLngTuple = [50.06768366766956, 19.989913515829258];
 	const DEFAULT_ZOOM = 16;
+	const TOAST_TIMEOUT_MS = 8000;
 
 	let mapContainer: HTMLDivElement;
 	let hintBar = $state<HTMLElement>();
 	let summaryCard = $state<HTMLElement>();
-
 	let summaryHeight = $state(0);
 
 	let start = $state<Waypoint | null>(null);
 	let destination = $state<Waypoint | null>(null);
 	let routes = $state<RouteResponse | null>(null);
+	/** Both endpoints returned the same geometry - only one route is drawn and listed. */
+	let identicalRoutes = $state(false);
 	let loading = $state(false);
-	let errorMessage = $state<string | null>(null);
+	let toast = $state<Toast | null>(null);
 
 	let L: typeof Leaflet | undefined;
 	let map: Leaflet.Map | undefined;
-	let overlayLayer: Leaflet.LayerGroup | undefined;
+	let markersLayer: Leaflet.LayerGroup | undefined;
+	let routesLayer: Leaflet.LayerGroup | undefined;
 	let zoomControl: Leaflet.Control.Zoom | undefined;
+	const markers: Partial<Record<WaypointKind, Leaflet.Marker>> = {};
 	let requestId = 0;
 	let abortController: AbortController | undefined;
 
 	const hint = $derived(
 		loading
-			? 'Wyznaczanie tras…'
+			? 'Wyznaczanie trasy…'
 			: !start
 				? 'Dotknij mapy, aby wybrać punkt startowy (A).'
 				: !destination
 					? 'Teraz wybierz cel podróży (B).'
-					: null
+					: 'Przeciągnij A lub B, aby zmienić trasę.'
 	);
+
+	// Auto-hide informational toasts; ones with a retry action stay until handled.
+	$effect(() => {
+		if (!toast || toast.retry) return;
+		const timer = setTimeout(() => (toast = null), TOAST_TIMEOUT_MS);
+		return () => clearTimeout(timer);
+	});
 
 	onMount(() => {
 		let destroyed = false;
@@ -61,7 +84,9 @@
 				subdomains: TILE_SUBDOMAINS,
 				maxZoom: 19
 			}).addTo(map);
-			overlayLayer = L.layerGroup().addTo(map);
+			// Routes below markers, so A/B stay grabbable on top of the lines.
+			routesLayer = L.layerGroup().addTo(map);
+			markersLayer = L.layerGroup().addTo(map);
 			map.on('click', handleMapClick);
 
 			map.invalidateSize();
@@ -75,78 +100,203 @@
 			resizeObserver?.disconnect();
 			map?.off('click', handleMapClick);
 			map?.remove();
-			map = overlayLayer = zoomControl = L = undefined;
+			map = markersLayer = routesLayer = zoomControl = L = undefined;
+			delete markers.start;
+			delete markers.destination;
 		};
 	});
 
+	// --- Point selection ---
+
 	function handleMapClick(event: Leaflet.LeafletMouseEvent) {
-		if (destination || loading) return;
+		if (loading) return;
 		const point: Waypoint = { lat: event.latlng.lat, lng: event.latlng.lng };
 
 		if (!start) {
 			start = point;
-			addWaypointMarker(point, 'start');
+			placeMarker('start', point);
+			toast = null;
+			return;
+		}
+		// Both points set: changes happen by dragging the markers (or "Wyczyść").
+		if (destination) return;
+
+		if (isTooClose(start, point)) {
+			showSamePointToast();
+			return;
+		}
+		destination = point;
+		placeMarker('destination', point);
+		requestRoutes();
+	}
+
+	function placeMarker(kind: WaypointKind, point: Waypoint) {
+		if (!L || !markersLayer) return;
+		const existing = markers[kind];
+		if (existing) {
+			existing.setLatLng([point.lat, point.lng]);
 			return;
 		}
 
-		destination = point;
-		addWaypointMarker(point, 'destination');
-		loadRoutes(start, destination);
-	}
-
-	function addWaypointMarker(point: Waypoint, kind: 'start' | 'destination') {
-		if (!L || !overlayLayer) return;
-		const label = kind === 'start' ? 'A' : 'B';
 		const icon = L.divIcon({
 			className: `map-marker map-marker--${kind}`,
-			html: `<span>${label}</span>`,
+			html: `<span>${kind === 'start' ? 'A' : 'B'}</span>`,
 			iconSize: null as unknown as Leaflet.PointExpression
 		});
-		L.marker([point.lat, point.lng], {
+		const marker = L.marker([point.lat, point.lng], {
 			icon,
+			draggable: true,
+			autoPan: true,
 			keyboard: false,
-			title: kind === 'start' ? 'Start (A)' : 'Cel (B)'
-		}).addTo(overlayLayer);
+			title:
+				kind === 'start'
+					? 'Start (A) - przeciągnij, aby zmienić'
+					: 'Cel (B) - przeciągnij, aby zmienić'
+		}).addTo(markersLayer);
+		marker.on('dragend', () => handleMarkerDrag(kind, marker.getLatLng()));
+		markers[kind] = marker;
 	}
 
-	async function loadRoutes(from: Waypoint, to: Waypoint) {
-		const currentRequest = ++requestId;
-		abortController?.abort();
-		abortController = new AbortController();
+	function handleMarkerDrag(kind: WaypointKind, latlng: Leaflet.LatLng) {
+		const point: Waypoint = { lat: latlng.lat, lng: latlng.lng };
+		if (kind === 'start') start = point;
+		else destination = point;
+
+		if (!start || !destination) return;
+		if (isTooClose(start, destination)) {
+			cancelRequest();
+			clearRoutes();
+			showSamePointToast();
+			return;
+		}
+		requestRoutes();
+	}
+
+	/** Places the preset A/B markers, frames them and fetches both routes. */
+	function loadDemoRoute() {
+		if (!map) return;
+		start = { ...DEMO_ROUTE.start };
+		destination = { ...DEMO_ROUTE.destination };
+		placeMarker('start', start);
+		placeMarker('destination', destination);
+		const spacing = parseFloat(getComputedStyle(mapContainer).getPropertyValue('--odstep-duzy'));
+		map.fitBounds(
+			[
+				[start.lat, start.lng],
+				[destination.lat, destination.lng]
+			],
+			{
+				paddingTopLeft: [spacing, spacing + (hintBar?.offsetHeight ?? 0)],
+				paddingBottomRight: [spacing, spacing]
+			}
+		);
+		requestRoutes();
+	}
+
+	function isTooClose(a: Waypoint, b: Waypoint) {
+		return distanceMeters([a.lat, a.lng], [b.lat, b.lng]) < MIN_ROUTE_DISTANCE_M;
+	}
+
+	function showSamePointToast() {
+		toast = {
+			tone: 'warning',
+			message: 'Start i cel są w tym samym miejscu. Wybierz cel w innym punkcie.'
+		};
+	}
+
+	// --- Backend request ---
+
+	async function requestRoutes() {
+		if (!start || !destination) return;
+		const from: LatLngTuple = [start.lat, start.lng];
+		const to: LatLngTuple = [destination.lat, destination.lng];
+
+		cancelRequest();
+		const currentRequest = requestId;
+		const controller = (abortController = new AbortController());
+		clearRoutes();
+		toast = null;
 		loading = true;
-		errorMessage = null;
 
 		try {
-			const response = await fetchRouteComparison(
-				[from.lat, from.lng],
-				[to.lat, to.lng],
-				abortController.signal
-			);
+			const response = await fetchRouteComparison(from, to, controller.signal);
 			if (currentRequest !== requestId) return;
-			if (response.length === 0) {
-				errorMessage = 'Nie znaleziono trasy między tymi punktami.';
-				return;
+
+			const { routes: visibleRoutes, identical } = collapseIdenticalRoutes(response);
+			routes = visibleRoutes;
+			identicalRoutes = identical;
+			if (!visibleRoutes.some((route) => route.isWheelchairSafe)) {
+				toast = {
+					tone: 'warning',
+					message:
+						'Brak trasy dostępnej dla wózka między tymi punktami. Pokazano trasę standardową - może zawierać bariery.'
+				};
+			} else if (identical) {
+				toast = {
+					tone: 'info',
+					message: 'Obie wyznaczone trasy są identyczne - wyświetlono jedną ścieżkę.'
+				};
 			}
-			routes = response;
-			drawRoutes(response);
+			await drawRoutes(visibleRoutes);
 		} catch (error) {
 			if (currentRequest !== requestId) return;
-			console.error('Route comparison failed:', error);
-			errorMessage = 'Nie udało się wyznaczyć tras. Spróbuj ponownie.';
+			const kind = error instanceof RouteApiError ? error.kind : 'server';
+			if (kind === 'aborted') return;
+			console.error('Route request failed:', error);
+			toast = errorToast(kind);
 		} finally {
 			if (currentRequest === requestId) loading = false;
 		}
 	}
 
+	function errorToast(kind: RouteApiError['kind']): Toast {
+		switch (kind) {
+			case 'no-route':
+				return {
+					tone: 'error',
+					message: 'Nie istnieje trasa między wybranymi punktami. Przesuń A lub B w inne miejsce.'
+				};
+			case 'network':
+				return {
+					tone: 'error',
+					retry: true,
+					message: 'Brak połączenia z serwerem tras. Sprawdź internet i spróbuj ponownie.'
+				};
+			default:
+				return {
+					tone: 'error',
+					retry: true,
+					message: 'Serwer tras zwrócił błąd. Spróbuj ponownie za chwilę.'
+				};
+		}
+	}
+
+	/** Invalidates any in-flight request so its result is ignored. */
+	function cancelRequest() {
+		requestId++;
+		abortController?.abort();
+		abortController = undefined;
+		loading = false;
+	}
+
+	// --- Drawing ---
+
+	function clearRoutes() {
+		routesLayer?.clearLayers();
+		routes = null;
+		identicalRoutes = false;
+		summaryHeight = 0;
+	}
+
 	async function drawRoutes(response: RouteResponse) {
-		if (!L || !map || !overlayLayer) return;
+		if (!L || !map || !routesLayer) return;
 
 		// Barrier routes first so the wheelchair-safe ones are drawn on top.
 		for (const route of [...response].reverse()) {
 			L.polyline(route.coordinates, {
 				className: `route-line route-line--${route.type}`,
 				interactive: false
-			}).addTo(overlayLayer);
+			}).addTo(routesLayer);
 		}
 
 		await tick();
@@ -166,61 +316,99 @@
 	}
 
 	function reset() {
-		requestId++;
-		abortController?.abort();
-		overlayLayer?.clearLayers();
-		start = destination = routes = errorMessage = null;
-		loading = false;
-		summaryHeight = 0;
+		cancelRequest();
+		clearRoutes();
+		markersLayer?.clearLayers();
+		delete markers.start;
+		delete markers.destination;
+		start = destination = toast = null;
 		map?.setView(KRAKOW_CENTER, DEFAULT_ZOOM);
 	}
 
 	function routeLabel(route: RouteInfo) {
+		if (identicalRoutes) return 'Obie trasy';
 		return route.isWheelchairSafe ? 'Dla wózka' : 'Bariery';
 	}
 </script>
 
-<section class="map-tab" style:--wysokosc-panelu-tras="{summaryHeight}px">
+<section class="map-tab" aria-busy={loading} style:--wysokosc-panelu-tras="{summaryHeight}px">
 	<div class="map-canvas" class:has-summary={summaryHeight > 0} bind:this={mapContainer}></div>
 
 	<div class="map-top" bind:this={hintBar}>
-		{#if hint}
-			<p class="map-hint" aria-live="polite">{hint}</p>
-		{/if}
-		{#if start}
-			<button class="reset-btn" type="button" onclick={reset}>Wyczyść</button>
+		<div class="map-top-row">
+			<p class="map-hint" aria-live="polite">
+				{#if loading}<span class="spinner" aria-hidden="true"></span>{/if}
+				{hint}
+			</p>
+			<div class="top-actions">
+				<button
+					class="demo-btn"
+					type="button"
+					onclick={loadDemoRoute}
+					disabled={loading}
+					title="Wczytaj przykładową trasę do prezentacji">Demo</button
+				>
+				{#if start}
+					<button class="reset-btn" type="button" onclick={reset}>Wyczyść</button>
+				{/if}
+			</div>
+		</div>
+
+		{#if toast}
+			<div
+				class="map-toast map-toast--{toast.tone}"
+				role={toast.tone === 'error' ? 'alert' : 'status'}
+			>
+				<p>{toast.message}</p>
+				<div class="toast-actions">
+					{#if toast.retry}
+						<button type="button" class="toast-btn" onclick={requestRoutes}>Spróbuj ponownie</button
+						>
+					{/if}
+					<button
+						type="button"
+						class="toast-btn toast-btn--close"
+						aria-label="Zamknij komunikat"
+						onclick={() => (toast = null)}>&times;</button
+					>
+				</div>
+			</div>
 		{/if}
 	</div>
 
-	{#if routes || errorMessage}
+	{#if routes && routes.length > 0}
 		<div
 			class="route-summary"
 			bind:this={summaryCard}
 			bind:offsetHeight={summaryHeight}
 			aria-live="polite"
 		>
-			{#if errorMessage}
-				<p class="summary-error">{errorMessage}</p>
-			{:else if routes}
-				<ul class="route-list">
-					{#each routes as route (route.id)}
-						<li class="route-row">
-							<span class="legend-line legend-line--{route.type}" aria-hidden="true"></span>
-							<div class="route-text">
-								<strong>{route.name}</strong>
-								<span class="route-meta"
-									>{formatDistance(route.distanceMeters)} · {formatDuration(
-										route.durationMinutes
-									)}</span
+			<ul class="route-list">
+				{#each routes as route (route.id)}
+					<li class="route-row">
+						<span class="legend-line legend-line--{route.type}" aria-hidden="true"></span>
+						<div class="route-text">
+							<strong>{route.name}</strong>
+							<span class="route-meta"
+								>{formatDistance(route.distanceMeters)} · {formatDuration(
+									route.durationMinutes
+								)}</span
+							>
+							{#if identicalRoutes}
+								<span class="route-identical"
+									>Trasa bez barier i standardowa pokrywają się - ten sam przebieg, dystans i czas.</span
 								>
-							</div>
-							<span class="route-tag route-tag--{route.type}">{routeLabel(route)}</span>
-						</li>
-					{/each}
-				</ul>
-				{#if USING_MOCK_ROUTES}
-					<p class="summary-note">Dane przykładowe - trasy wyznaczy serwer.</p>
-				{/if}
+							{/if}
+							{#if route.note}
+								<span class="route-note">{route.note}</span>
+							{/if}
+						</div>
+						<span class="route-tag route-tag--{route.type}">{routeLabel(route)}</span>
+					</li>
+				{/each}
+			</ul>
+			{#if USING_MOCK_ROUTES}
+				<p class="summary-note">Dane przykładowe - trasy wyznaczy serwer.</p>
 			{/if}
 		</div>
 	{/if}
@@ -265,7 +453,7 @@
 		right: 0;
 		left: 0;
 		display: flex;
-		align-items: flex-start;
+		flex-direction: column;
 		gap: var(--odstep-maly);
 		padding: var(--odstep-sredni);
 		padding-right: max(var(--odstep-sredni), env(safe-area-inset-right, 0px));
@@ -273,8 +461,16 @@
 		pointer-events: none;
 	}
 
+	.map-top-row {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--odstep-maly);
+	}
+
 	.map-hint,
-	.reset-btn {
+	.reset-btn,
+	.demo-btn,
+	.map-toast {
 		pointer-events: auto;
 		box-shadow: var(--cien-panelu-mapy);
 	}
@@ -291,8 +487,123 @@
 		font-weight: 600;
 	}
 
-	.reset-btn {
+	.map-hint {
+		display: flex;
+		align-items: center;
+		gap: var(--odstep-maly);
+	}
+
+	.spinner {
+		flex-shrink: 0;
+		width: 1em;
+		height: 1em;
+		border: 2px solid var(--kolor-obramowania);
+		border-top-color: var(--kolor-wyroznienia);
+		border-radius: var(--zaokraglenie-pelne);
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.spinner {
+			animation-duration: 2.4s;
+		}
+	}
+
+	.map-toast {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--odstep-maly);
+		padding: var(--odstep-maly) var(--odstep-sredni);
+		border: 1px solid var(--kolor-obramowania-ostrzezenia);
+		border-radius: var(--zaokraglenie-srednie);
+		background: var(--kolor-tla-ostrzezenia);
+		color: var(--kolor-tekstu-ostrzezenia);
+		font-size: 0.8125rem;
+		font-weight: 600;
+	}
+
+	.map-toast--warning,
+	.map-toast--info {
+		border-color: var(--kolor-obramowania);
+		background: var(--kolor-tla-przezroczystej-karty);
+		color: var(--kolor-tekstu-podstawowego);
+	}
+
+	.map-toast p {
+		flex: 1;
+		margin: 0;
+		padding-block: var(--odstep-bardzo-maly);
+	}
+
+	.toast-actions {
+		display: flex;
+		flex-shrink: 0;
+		align-items: center;
+		gap: var(--odstep-bardzo-maly);
+	}
+
+	.toast-btn {
+		padding: var(--odstep-bardzo-maly) var(--odstep-maly);
+		border: 1px solid currentColor;
+		border-radius: var(--zaokraglenie-pelne);
+		background: none;
+		color: inherit;
+		font: inherit;
+		font-size: 0.75rem;
+		cursor: pointer;
+	}
+
+	.toast-btn--close {
+		width: 1.75rem;
+		height: 1.75rem;
+		padding: 0;
+		border: none;
+		font-size: 1.125rem;
+		line-height: 1;
+	}
+
+	.toast-btn:focus-visible {
+		outline: 2px solid currentColor;
+		outline-offset: 2px;
+	}
+
+	.top-actions {
+		display: flex;
+		flex-direction: column;
+		flex-shrink: 0;
+		align-items: stretch;
+		gap: var(--odstep-bardzo-maly);
 		margin-left: auto;
+	}
+
+	.demo-btn {
+		padding: var(--odstep-bardzo-maly) var(--odstep-maly);
+		border: 1px solid var(--kolor-obramowania);
+		border-radius: var(--zaokraglenie-pelne);
+		background: var(--kolor-tla-przezroczystej-karty);
+		color: var(--kolor-tekstu-drugorzednego);
+		font-size: 0.75rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.demo-btn:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	.demo-btn:focus-visible {
+		outline: 2px solid var(--kolor-wyroznienia);
+		outline-offset: 2px;
+	}
+
+	.reset-btn {
 		padding: var(--odstep-maly) var(--odstep-sredni);
 		border: none;
 		border-radius: var(--zaokraglenie-pelne);
@@ -366,6 +677,17 @@
 		font-size: 0.8125rem;
 	}
 
+	.route-identical {
+		color: var(--kolor-trasy-bez-barier);
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+
+	.route-note {
+		color: var(--kolor-tekstu-drugorzednego);
+		font-size: 0.75rem;
+	}
+
 	.route-tag {
 		padding: var(--odstep-bardzo-maly) var(--odstep-maly);
 		border-radius: var(--zaokraglenie-male);
@@ -381,19 +703,10 @@
 		color: var(--kolor-tekstu-na-znaczniku);
 	}
 
-	.summary-note,
-	.summary-error {
-		margin: 0;
-		font-size: 0.75rem;
-	}
-
 	.summary-note {
+		margin: 0;
 		color: var(--kolor-tekstu-drugorzednego);
-	}
-
-	.summary-error {
-		color: var(--kolor-tekstu-ostrzezenia);
-		font-weight: 600;
+		font-size: 0.75rem;
 	}
 
 	.map-canvas :global(.leaflet-tile) {
@@ -447,6 +760,13 @@
 		color: var(--kolor-tekstu-na-znaczniku);
 		font-size: 0.875rem;
 		font-weight: 800;
+		cursor: grab;
+		touch-action: none;
+	}
+
+	.map-canvas :global(.map-marker.leaflet-drag-target),
+	.map-canvas :global(.map-marker:active) {
+		cursor: grabbing;
 	}
 
 	.map-canvas :global(.map-marker--start) {

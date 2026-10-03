@@ -17,6 +17,10 @@ export interface RouteFeatureProperties {
 	time_minutes: number;
 	/** `true` = the whole route is passable for a wheelchair; `false` = it has barriers. */
 	is_wheelchair_safe: boolean;
+	/** Optional explanation, e.g. which barriers the route avoids. */
+	info?: string;
+	/** Optional caution, e.g. "may contain stairs or rough cobblestones". */
+	warning?: string;
 }
 
 export interface RouteFeature {
@@ -46,9 +50,18 @@ export interface RouteInfo {
 	isWheelchairSafe: boolean;
 	distanceMeters: number;
 	durationMinutes: number;
+	/** Backend `info` / `warning` text shown under the route. */
+	note?: string;
 	/** Leaflet order: `[latitude, longitude]`. */
 	coordinates: LatLngTuple[];
 }
 
 /** Wheelchair-safe routes first. May contain one route (like the sample) or several. */
 export type RouteResponse = RouteInfo[];
+
+/** Why a route request failed - drives the message shown to the user. */
+export type RouteErrorKind =
+	| 'no-route' // backend could not connect the points (e.g. outside the routing area)
+	| 'network' // no connection / server offline
+	| 'server' // backend error or unexpected response
+	| 'aborted'; // superseded by a newer request or reset

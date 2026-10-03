@@ -1,1 +1,1 @@
-// place files you want to import through the `#lib` alias in this folder.
+// umiesc tutaj pliki, ktore chcesz importowac przez alias `#lib`.
