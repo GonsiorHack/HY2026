@@ -5,11 +5,17 @@
 	import { fetchRouteComparison } from '../../services/routes';
 	import type { LatLngTuple, RouteInfo, RouteResponse, Waypoint } from '../../types/route';
 
-	const KRAKOW_CENTER: LatLngTuple = [50.0647, 19.945];
-	const DEFAULT_ZOOM = 13;
-	const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+	const KRAKOW_CENTER: LatLngTuple = [50.06768366766956, 19.989913515829258];
+	const DEFAULT_ZOOM = 16;
+	// Humanitarian OpenStreetMap (HOT) - highlights footways, steps and amenities.
+	const TILE_URL = 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png';
+	const TILE_SUBDOMAINS = ['a', 'b', 'c'];
 	const TILE_ATTRIBUTION =
-		'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+		'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, ' +
+		'Tiles style by <a href="https://www.hotosm.org/" target="_blank" rel="noopener">Humanitarian OpenStreetMap Team</a> ' +
+		'hosted by <a href="https://openstreetmap.fr/" target="_blank" rel="noopener">OSM France</a>';
+	const ATTRIBUTION_PREFIX =
+		'<a href="https://leafletjs.com" target="_blank" rel="noopener" title="A JavaScript library for interactive maps">Leaflet</a>';
 
 	let mapContainer: HTMLDivElement;
 	let hintBar = $state<HTMLElement>();
@@ -48,9 +54,11 @@
 			L = module.default;
 
 			map = L.map(mapContainer, { zoomControl: false }).setView(KRAKOW_CENTER, DEFAULT_ZOOM);
+			map.attributionControl.setPrefix(ATTRIBUTION_PREFIX);
 			zoomControl = L.control.zoom({ position: 'bottomright' }).addTo(map);
 			L.tileLayer(TILE_URL, {
 				attribution: TILE_ATTRIBUTION,
+				subdomains: TILE_SUBDOMAINS,
 				maxZoom: 19
 			}).addTo(map);
 			overlayLayer = L.layerGroup().addTo(map);
@@ -122,7 +130,6 @@
 	async function drawRoutes(response: RouteResponse) {
 		if (!L || !map || !overlayLayer) return;
 
-		// Standard first so the accessible route is drawn on top of it.
 		for (const route of [response.standard, response.wheelchair]) {
 			L.polyline(route.coordinates, {
 				className: `route-line route-line--${route.type}`,
@@ -202,7 +209,6 @@
 </section>
 
 <style>
-	
 	.map-tab {
 		position: relative;
 		height: 100%;
@@ -228,7 +234,7 @@
 		background: var(--kolor-tla-mapy);
 		font-family: inherit;
 	}
-	
+
 	.map-canvas:focus-visible {
 		outline: 2px solid var(--kolor-linku-mapy);
 		outline-offset: -2px;
