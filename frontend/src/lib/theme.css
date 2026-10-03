@@ -88,6 +88,15 @@
 	--grubosc-obwodki-znacznika: 3px;
 	--cien-panelu-mapy: 0 4px 16px #0f172a2e;
 	--cien-znacznika-mapy: 0 2px 6px #0f172a59;
+
+	/* Zgłaszanie przeszkody zdjęciem (przycisk aparatu na mapie). */
+	--kolor-sukcesu: #15803d;
+	--kolor-tla-sukcesu: #f0fdf4;
+	--kolor-tla-zaciemnienia: #0f172a80;
+	--rozmiar-przycisku-aparatu: 56px;
+	--szerokosc-menu-zgloszenia: 16rem;
+	--szerokosc-okna-komunikatu: 20rem;
+	--rozmiar-podgladu-zdjecia: 96px;
 }
 
 :root[data-theme='dark'] {
@@ -113,6 +122,10 @@
 
 	/* Cień pływających paneli aplikacji nad mapą (podpowiedź, podsumowanie tras). */
 	--cien-panelu-mapy: 0 4px 16px #00000080;
+
+	--kolor-sukcesu: #4ade80;
+	--kolor-tla-sukcesu: #052e16;
+	--kolor-tla-zaciemnienia: #000000a6;
 }
 
 :root[data-contrast='high'] {
@@ -149,6 +162,9 @@
 	--kolor-obwodki-znacznika: #000000;
 	--grubosc-linii-trasy: 6px;
 
+	--kolor-sukcesu: #006b1f;
+	--kolor-tla-sukcesu: #ffffff;
+
 	--cien-karty: none;
 	--cien-panelu-mapy: none;
 	--cien-znacznika-mapy: none;
@@ -176,6 +192,9 @@
 	--kolor-tla-ostrzezenia: #000000;
 	--kolor-obramowania-ostrzezenia: #ff6b6b;
 	--kolor-tekstu-ostrzezenia: #ffffff;
+
+	--kolor-sukcesu: #4ade80;
+	--kolor-tla-sukcesu: #000000;
 }
 
 :root[data-text-size='large'] {

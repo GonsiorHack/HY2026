@@ -14,6 +14,7 @@
 	} from '../../services/routes';
 	import type { LatLngTuple, RouteInfo, RouteResponse, Waypoint } from '../../types/route';
 	import { DEMO_ROUTE, TILE_SUBDOMAINS, TILE_URL } from '../../config/map';
+	import ReportObstacle from '#lib/components/ReportObstacle.svelte';
 
 	type WaypointKind = 'start' | 'destination';
 	interface Toast {
@@ -331,7 +332,14 @@
 	}
 </script>
 
-<section class="map-tab" aria-busy={loading} style:--wysokosc-panelu-tras="{summaryHeight}px">
+<section
+	class="map-tab"
+	aria-busy={loading}
+	style:--wysokosc-panelu-tras="{summaryHeight}px"
+	style:--przesuniecie-zgloszenia={summaryHeight > 0
+		? `calc(${summaryHeight}px + var(--odstep-sredni))`
+		: '0px'}
+>
 	<div class="map-canvas" class:has-summary={summaryHeight > 0} bind:this={mapContainer}></div>
 
 	<div class="map-top" bind:this={hintBar}>
@@ -412,6 +420,8 @@
 			{/if}
 		</div>
 	{/if}
+
+	<ReportObstacle />
 </section>
 
 <style>
