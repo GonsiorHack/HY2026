@@ -13,15 +13,11 @@
 	--kolor-tla-ciemna: #0f172a;
 	--kolor-obudowy-telefonu: #1e293b;
 	--kolor-obramowania-telefonu: #334155;
-	/* Ramka telefonu w widoku komputerowym: ciemna w trybie jasnym, biała w ciemnym. */
-	--kolor-ramki-telefonu: #1f2937;
-	--kolor-krawedzi-ramki-telefonu: #000000;
 	/* Ekran startowy (animacja przy otwarciu aplikacji). */
 	--kolor-tla-ekranu-startowego: #ffffff;
 	--kolor-tla-przycisku-pomin: #0f172a99;
 	/* Niebieskie tło pod białym logo w górnym pasku (ten sam kolor co w animacji startowej). */
 	--kolor-tla-logo: #3063ab;
-	--kolor-tla-mapy: #e2e8f0;
 	--kolor-czarny: #000000;
 
 	--kolor-tekstu-podstawowego: #0f172a;
@@ -34,14 +30,20 @@
 	--kolor-obramowania-ostrzezenia: #fecaca;
 	--kolor-tekstu-ostrzezenia: #991b1b;
 	--kolor-tekstu-informacji: #38bdf8;
-	--kolor-cienia-telefonu: #0f172a40;
 
-	/* Widok komputerowy (tło wokół telefonu i tekst obok niego) - zmienia się razem z motywem. */
-	--kolor-tla-pulpitu: #e2e8f0;
-	--kolor-tla-pulpitu-rozjasnione: #f8fafc;
-	--kolor-tytulu-pulpitu: #0f172a;
-	--kolor-opisu-pulpitu: #475569;
-	--kolor-plakietki-pulpitu: #0369a1;
+	/* Widok komputerowy (tło wokół telefonu, tekst obok niego i ramka telefonu).
+	   STAŁY - nie zmienia się przy przełączaniu motywu ani wysokiego kontrastu w aplikacji,
+	   dlatego tych zmiennych nie nadpisujemy w blokach motywów poniżej. */
+	--kolor-tla-pulpitu: #0f172a;
+	--kolor-tla-pulpitu-rozjasnione: #1e293b;
+	--kolor-tytulu-pulpitu: #ffffff;
+	--kolor-opisu-pulpitu: #94a3b8;
+	--kolor-kropki-pulpitu: #007aff;
+	--kolor-tla-plakietki-pulpitu: #007aff33;
+	--kolor-plakietki-pulpitu: #38bdf8;
+	--kolor-ramki-telefonu: #f1f5f9;
+	--kolor-krawedzi-ramki-telefonu: #ffffff;
+	--kolor-cienia-telefonu: #000000b3;
 
 	/* Nazwa aplikacji w dwóch częściach - zmień tylko tutaj, a zmieni się w całej aplikacji.
 	   Na komputerze tytuł wygląda tak: „Kraków. Bez Barier” (kropka w kolorze wyróżnienia). */
@@ -66,7 +68,15 @@
 
 	--cien-karty: 0 1px 3px #0000000a;
 
-	/* Mapa z trasami (karta "Trasa"). */
+	/* Mapa z trasami (karta "Trasa").
+	   Mapa ma STAŁE jasne kolory (podkład, trasy, znaczniki) - nie przyciemnia się w trybie ciemnym,
+	   bo ciemna/odwrócona mapa jest nieczytelna. Dlatego nie nadpisujemy ich w bloku trybu ciemnego.
+	   Wysoki kontrast tylko wzmacnia te jasne kolory (blok [data-contrast='high']). */
+	--kolor-tla-mapy: #e2e8f0;
+	--kolor-tla-kontrolek-mapy: #ffffff;
+	--kolor-tekstu-kontrolek-mapy: #0f172a;
+	--kolor-obramowania-kontrolek-mapy: #cbd5e1;
+	--kolor-linku-mapy: #0369a1;
 	--kolor-trasy-standardowej: #64748b;
 	--kolor-trasy-bez-barier: #15803d;
 	--kolor-punktu-startu: #007aff;
@@ -79,21 +89,9 @@
 	--grubosc-obwodki-znacznika: 3px;
 	--cien-panelu-mapy: 0 4px 16px #0f172a2e;
 	--cien-znacznika-mapy: 0 2px 6px #0f172a59;
-	/* Filtr podkładu mapy: w trybie jasnym bez zmian, w ciemnym przyciemnia kafelki OpenStreetMap. */
-	--filtr-kafelkow-mapy: none;
 }
 
 :root[data-theme='dark'] {
-	--kolor-ramki-telefonu: #f1f5f9;
-	--kolor-krawedzi-ramki-telefonu: #ffffff;
-	--kolor-cienia-telefonu: #000000b3;
-
-	--kolor-tla-pulpitu: #0f172a;
-	--kolor-tla-pulpitu-rozjasnione: #1e293b;
-	--kolor-tytulu-pulpitu: #ffffff;
-	--kolor-opisu-pulpitu: #94a3b8;
-	--kolor-plakietki-pulpitu: #38bdf8;
-
 	--kolor-wyroznienia: #0a84ff;
 	--kolor-delikatnego-wyroznienia: #0a84ff33;
 	--kolor-tla-wylaczonego-przelacznika: #475569;
@@ -103,7 +101,6 @@
 	--kolor-tla-karty: #1e293b;
 	--kolor-tla-przezroczystej-karty: #1e293bf2;
 	--kolor-tla-elementu-drugorzednego: #334155;
-	--kolor-tla-mapy: #334155;
 
 	--kolor-tekstu-podstawowego: #f1f5f9;
 	--kolor-tekstu-listy: #cbd5e1;
@@ -115,25 +112,11 @@
 	--kolor-obramowania-ostrzezenia: #7f1d1d;
 	--kolor-tekstu-ostrzezenia: #fecaca;
 
-	--kolor-trasy-standardowej: #94a3b8;
-	--kolor-trasy-bez-barier: #4ade80;
-	--kolor-punktu-startu: #0a84ff;
-	--kolor-punktu-celu: #f87171;
-	--kolor-tekstu-na-znaczniku: #0b1120;
-	--kolor-obwodki-znacznika: #0b1120;
+	/* Cień pływających paneli aplikacji nad mapą (podpowiedź, podsumowanie tras). */
 	--cien-panelu-mapy: 0 4px 16px #00000080;
-	--cien-znacznika-mapy: 0 2px 6px #000000a6;
-	--filtr-kafelkow-mapy: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
 }
 
 :root[data-contrast='high'] {
-	--kolor-ramki-telefonu: #000000;
-	--kolor-tla-pulpitu: #ffffff;
-	--kolor-tla-pulpitu-rozjasnione: #ffffff;
-	--kolor-tytulu-pulpitu: #000000;
-	--kolor-opisu-pulpitu: #000000;
-	--kolor-plakietki-pulpitu: #0040dd;
-
 	--kolor-wyroznienia: #0040dd;
 	--kolor-tekstu-na-wyroznieniu: #ffffff;
 	--kolor-delikatnego-wyroznienia: #0040dd26;
@@ -156,6 +139,9 @@
 	--kolor-obramowania-ostrzezenia: #b91c1c;
 	--kolor-tekstu-ostrzezenia: #7f1d1d;
 
+	--kolor-tekstu-kontrolek-mapy: #000000;
+	--kolor-obramowania-kontrolek-mapy: #000000;
+	--kolor-linku-mapy: #0040dd;
 	--kolor-trasy-standardowej: #000000;
 	--kolor-trasy-bez-barier: #006b1f;
 	--kolor-punktu-startu: #0040dd;
@@ -170,13 +156,6 @@
 }
 
 :root[data-theme='dark'][data-contrast='high'] {
-	--kolor-ramki-telefonu: #ffffff;
-	--kolor-tla-pulpitu: #000000;
-	--kolor-tla-pulpitu-rozjasnione: #000000;
-	--kolor-tytulu-pulpitu: #ffffff;
-	--kolor-opisu-pulpitu: #ffffff;
-	--kolor-plakietki-pulpitu: #4da3ff;
-
 	--kolor-wyroznienia: #4da3ff;
 	--kolor-tekstu-na-wyroznieniu: #000000;
 	--kolor-delikatnego-wyroznienia: #4da3ff33;
@@ -188,7 +167,6 @@
 	--kolor-tla-przezroczystej-karty: #000000;
 	--kolor-tla-elementu-drugorzednego: #262626;
 	--kolor-tla-ciemna: #000000;
-	--kolor-tla-mapy: #262626;
 
 	--kolor-tekstu-podstawowego: #ffffff;
 	--kolor-tekstu-listy: #ffffff;
@@ -199,13 +177,6 @@
 	--kolor-tla-ostrzezenia: #000000;
 	--kolor-obramowania-ostrzezenia: #ff6b6b;
 	--kolor-tekstu-ostrzezenia: #ffffff;
-
-	--kolor-trasy-standardowej: #ffffff;
-	--kolor-trasy-bez-barier: #5cff8a;
-	--kolor-punktu-startu: #4da3ff;
-	--kolor-punktu-celu: #ff6b6b;
-	--kolor-tekstu-na-znaczniku: #000000;
-	--kolor-obwodki-znacznika: #ffffff;
 }
 
 :root[data-text-size='large'] {

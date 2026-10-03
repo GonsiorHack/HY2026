@@ -202,12 +202,18 @@
 </section>
 
 <style>
+	
 	.map-tab {
 		position: relative;
 		height: 100%;
 		min-height: 100%;
+		margin: 0;
+		padding: 0;
 		overflow: hidden;
-		border-radius: var(--zaokraglenie-duze);
+		border: none;
+		border-radius: 0;
+		outline: none;
+		box-shadow: none;
 		background: var(--kolor-tla-mapy);
 	}
 
@@ -216,8 +222,16 @@
 		z-index: 0;
 		inset: 0;
 		isolation: isolate;
+		border: none;
+		outline: none;
+		box-shadow: none;
 		background: var(--kolor-tla-mapy);
 		font-family: inherit;
+	}
+	
+	.map-canvas:focus-visible {
+		outline: 2px solid var(--kolor-linku-mapy);
+		outline-offset: -2px;
 	}
 
 	.map-top {
@@ -359,7 +373,7 @@
 	}
 
 	.map-canvas :global(.leaflet-tile) {
-		filter: var(--filtr-kafelkow-mapy);
+		filter: none;
 	}
 
 	.map-canvas.has-summary :global(.leaflet-bottom) {
@@ -367,25 +381,25 @@
 	}
 
 	.map-canvas :global(.leaflet-bar) {
-		border: 1px solid var(--kolor-obramowania);
+		border: 1px solid var(--kolor-obramowania-kontrolek-mapy);
 		border-radius: var(--zaokraglenie-srednie);
-		box-shadow: var(--cien-panelu-mapy);
+		box-shadow: var(--cien-znacznika-mapy);
 		overflow: hidden;
 	}
 
 	.map-canvas :global(.leaflet-bar a) {
-		border-bottom-color: var(--kolor-obramowania);
-		background: var(--kolor-tla-karty);
-		color: var(--kolor-tekstu-podstawowego);
+		border-bottom-color: var(--kolor-obramowania-kontrolek-mapy);
+		background: var(--kolor-tla-kontrolek-mapy);
+		color: var(--kolor-tekstu-kontrolek-mapy);
 	}
 
 	.map-canvas :global(.leaflet-control-attribution) {
-		background: var(--kolor-tla-przezroczystej-karty);
-		color: var(--kolor-tekstu-drugorzednego);
+		background: var(--kolor-tla-kontrolek-mapy);
+		color: var(--kolor-tekstu-kontrolek-mapy);
 	}
 
 	.map-canvas :global(.leaflet-control-attribution a) {
-		color: var(--kolor-wyroznienia);
+		color: var(--kolor-linku-mapy);
 	}
 
 	.map-canvas :global(.route-line) {

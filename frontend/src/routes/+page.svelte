@@ -11,12 +11,19 @@
 	import { settings } from '../lib/state/settings.svelte';
 	import type { Tab } from '../lib/types/navigation';
 
-	const tabs: { id: Tab; label: string; icon: string; component: Component }[] = [
+	const tabs: {
+		id: Tab;
+		label: string;
+		icon: string;
+		component: Component;
+		fullBleed?: boolean;
+	}[] = [
 		{
 			id: 'map',
 			label: 'Trasa',
 			icon: 'M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2V5z',
-			component: MapTab
+			component: MapTab,
+			fullBleed: true
 		},
 		{
 			id: 'facilities',
@@ -112,7 +119,7 @@
 
 		<section class="screen-body" aria-label="Zawartość karty" inert={showSplash}>
 			{#each tabs as tab (tab.id)}
-				<div class="tab-panel" class:active={activeTab === tab.id}>
+				<div class="tab-panel" class:active={activeTab === tab.id} class:full-bleed={tab.fullBleed}>
 					<tab.component />
 				</div>
 			{/each}
@@ -160,7 +167,7 @@
 		width: 100vw;
 		height: 100dvh;
 		overflow: hidden;
-		background: var(--kolor-tla-ciemna);
+		background: var(--kolor-tla-pulpitu);
 	}
 
 	.desktop-side-panel {
@@ -235,20 +242,21 @@
 	.screen-body {
 		flex: 1;
 		overflow-y: auto;
-		padding: 16px;
 	}
 
 	.tab-panel {
 		display: none;
+		padding: var(--odstep-duzy);
 	}
 
 	.tab-panel.active {
 		display: block;
 	}
 
-	/* mapa sie wyplewa, nie rosnie z contentem */
-	.tab-panel.active:has(:global(.map-tab)) {
+	/* Mapa wypełnia cały obszar między paskami nawigacji bez marginesów. */
+	.tab-panel.full-bleed {
 		height: 100%;
+		padding: 0;
 	}
 
 	.bottom-bar {
@@ -291,8 +299,8 @@
 			padding: 30px;
 			background: radial-gradient(
 				circle at 10% 20%,
-				var(--kolor-obudowy-telefonu) 50%,
-				var(--kolor-tla-ciemna) 90%
+				var(--kolor-tla-pulpitu-rozjasnione) 50%,
+				var(--kolor-tla-pulpitu) 90%
 			);
 		}
 
@@ -309,7 +317,7 @@
 			max-width: 460px;
 			flex-direction: column;
 			gap: 20px;
-			color: var(--kolor-jasnego-tekstu);
+			color: var(--kolor-tytulu-pulpitu);
 		}
 
 		.brand-title {
@@ -320,11 +328,11 @@
 		}
 
 		.brand-title .dot {
-			color: var(--kolor-wyroznienia);
+			color: var(--kolor-kropki-pulpitu);
 		}
 
 		.description {
-			color: var(--kolor-tekstu-pomocniczego);
+			color: var(--kolor-opisu-pulpitu);
 			font-size: 20px;
 			line-height: 1.5;
 		}
@@ -333,8 +341,8 @@
 			align-self: flex-start;
 			padding: 6px 14px;
 			border-radius: 10px;
-			background: var(--kolor-delikatnego-wyroznienia);
-			color: var(--kolor-tekstu-informacji);
+			background: var(--kolor-tla-plakietki-pulpitu);
+			color: var(--kolor-plakietki-pulpitu);
 			font-size: 15px;
 			font-weight: 600;
 		}
