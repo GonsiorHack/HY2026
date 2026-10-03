@@ -5,10 +5,9 @@
 
 	let { onfinish }: { onfinish: () => void } = $props();
 
-	// Safety net in case the video stalls or never fires "ended".
 	const MAX_DURATION_MS = 9000;
 
-	let video: HTMLVideoElement;
+	let videoElement: HTMLVideoElement;
 	let finished = false;
 
 	function finish() {
@@ -18,13 +17,14 @@
 	}
 
 	onMount(() => {
-		if (matchMedia('(prefers-reduced-motion: reduce)').matches || video.ended) {
+		if (matchMedia('(prefers-reduced-motion: reduce)').matches || videoElement.ended) {
 			finish();
 			return;
 		}
 
-		// Autoplay can be blocked (e.g. power-saving mode); then go straight to the app.
-		video.play().catch(finish);
+		videoElement.muted = true;
+		// case: autoplay blocked (np. Low Power Mode); prosto do apki
+		videoElement.play().catch(finish);
 		const timeout = setTimeout(finish, MAX_DURATION_MS);
 		return () => clearTimeout(timeout);
 	});
@@ -32,7 +32,7 @@
 
 <div class="splash" role="status" aria-label="Uruchamianie aplikacji" out:fade={{ duration: 300 }}>
 	<video
-		bind:this={video}
+		bind:this={videoElement}
 		src={splashVideo}
 		autoplay
 		muted
