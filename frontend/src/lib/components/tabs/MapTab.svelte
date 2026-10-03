@@ -2,7 +2,12 @@
 	import 'leaflet/dist/leaflet.css';
 	import type * as Leaflet from 'leaflet';
 	import { onMount, tick } from 'svelte';
-	import { fetchRouteComparison } from '../../services/routes';
+	import {
+		USING_MOCK_ROUTES,
+		fetchRouteComparison,
+		formatDistance,
+		formatDuration
+	} from '../../services/routes';
 	import type { LatLngTuple, RouteInfo, RouteResponse, Waypoint } from '../../types/route';
 
 	const KRAKOW_CENTER: LatLngTuple = [50.06768366766956, 19.989913515829258];
@@ -34,6 +39,7 @@
 	let overlayLayer: Leaflet.LayerGroup | undefined;
 	let zoomControl: Leaflet.Control.Zoom | undefined;
 	let requestId = 0;
+	let abortController: AbortController | undefined;
 
 	const hint = $derived(
 		loading
@@ -71,6 +77,7 @@
 
 		return () => {
 			destroyed = true;
+			abortController?.abort();
 			resizeObserver?.disconnect();
 			map?.off('click', handleMapClick);
 			map?.remove();
@@ -110,12 +117,22 @@
 
 	async function loadRoutes(from: Waypoint, to: Waypoint) {
 		const currentRequest = ++requestId;
+		abortController?.abort();
+		abortController = new AbortController();
 		loading = true;
 		errorMessage = null;
 
 		try {
-			const response = await fetchRouteComparison([from.lat, from.lng], [to.lat, to.lng]);
+			const response = await fetchRouteComparison(
+				[from.lat, from.lng],
+				[to.lat, to.lng],
+				abortController.signal
+			);
 			if (currentRequest !== requestId) return;
+			if (response.length === 0) {
+				errorMessage = 'Nie znaleziono trasy między tymi punktami.';
+				return;
+			}
 			routes = response;
 			drawRoutes(response);
 		} catch (error) {
@@ -130,7 +147,8 @@
 	async function drawRoutes(response: RouteResponse) {
 		if (!L || !map || !overlayLayer) return;
 
-		for (const route of [response.standard, response.wheelchair]) {
+		// Barrier routes first so the wheelchair-safe ones are drawn on top.
+		for (const route of [...response].reverse()) {
 			L.polyline(route.coordinates, {
 				className: `route-line route-line--${route.type}`,
 				interactive: false
@@ -140,10 +158,9 @@
 		await tick();
 		if (!map) return;
 		const spacing = parseFloat(getComputedStyle(mapContainer).getPropertyValue('--odstep-duzy'));
-		const bounds = L.latLngBounds([
-			...response.standard.coordinates,
-			...response.wheelchair.coordinates
-		]);
+		const bounds = L.latLngBounds(response.flatMap((route) => route.coordinates));
+		if (start) bounds.extend([start.lat, start.lng]);
+		if (destination) bounds.extend([destination.lat, destination.lng]);
 		const zoomEl = zoomControl?.getContainer();
 		const zoomInset = zoomEl
 			? mapContainer.getBoundingClientRect().right - zoomEl.getBoundingClientRect().left
@@ -156,6 +173,7 @@
 
 	function reset() {
 		requestId++;
+		abortController?.abort();
 		overlayLayer?.clearLayers();
 		start = destination = routes = errorMessage = null;
 		loading = false;
@@ -164,7 +182,7 @@
 	}
 
 	function routeLabel(route: RouteInfo) {
-		return route.type === 'wheelchair' ? 'Bez barier' : 'Standardowa';
+		return route.isWheelchairSafe ? 'Dla wózka' : 'Bariery';
 	}
 </script>
 
@@ -191,18 +209,24 @@
 				<p class="summary-error">{errorMessage}</p>
 			{:else if routes}
 				<ul class="route-list">
-					{#each [routes.wheelchair, routes.standard] as route (route.id)}
+					{#each routes as route (route.id)}
 						<li class="route-row">
 							<span class="legend-line legend-line--{route.type}" aria-hidden="true"></span>
 							<div class="route-text">
 								<strong>{route.name}</strong>
-								<span class="route-meta">{route.distance} · {route.duration}</span>
+								<span class="route-meta"
+									>{formatDistance(route.distanceMeters)} · {formatDuration(
+										route.durationMinutes
+									)}</span
+								>
 							</div>
 							<span class="route-tag route-tag--{route.type}">{routeLabel(route)}</span>
 						</li>
 					{/each}
 				</ul>
-				<p class="summary-note">Dane przykładowe - trasy wyznaczy serwer.</p>
+				{#if USING_MOCK_ROUTES}
+					<p class="summary-note">Dane przykładowe - trasy wyznaczy serwer.</p>
+				{/if}
 			{/if}
 		</div>
 	{/if}

@@ -8,6 +8,10 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+
+	interface ImportMetaEnv {
+		readonly VITE_ROUTES_API_URL?: string;
+	}
 }
 
 declare module 'svelte/elements' {

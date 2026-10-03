@@ -1,30 +1,140 @@
-import type { LatLngTuple, RouteResponse } from '../types/route';
+import type {
+	GeoJsonPosition,
+	LatLngTuple,
+	RouteFeature,
+	RouteFeatureCollection,
+	RouteInfo,
+	RouteResponse
+} from '../types/route';
 
 /**
- * Pobiera porównanie dwóch tras (zwykłej i bez barier) między punktami A i B.
+ * Backend endpoint, configured in `frontend/.env` (see `.env.example`):
+ *   VITE_ROUTES_API_URL=http://localhost:8000/api/routes
+ * When it's not set, the app uses mock data in the same format as the backend.
+ */
+const ROUTES_API_URL: string | undefined = import.meta.env.VITE_ROUTES_API_URL || undefined;
+
+export const USING_MOCK_ROUTES = !ROUTES_API_URL;
+
+/**
+ * Fetches routes between A and B and converts them to the UI format.
  *
- * PLACEHOLDER: wyznaczanie tras będzie po stronie backendu. Do tego czasu funkcja zwraca
- * dane pokazowe (linia prosta + sztuczny objazd), żeby dało się zbudować i przetestować UI.
- * Docelowo: `fetch('/api/routes/compare', { method: 'POST', body: JSON.stringify({ start, destination }) })`.
+ * Request (POST, JSON):  { "start": { "lat", "lng" }, "destination": { "lat", "lng" } }
+ * Response: GeoJSON FeatureCollection of LineStrings (example: `assets/przejazd.txt`).
  */
 export async function fetchRouteComparison(
 	start: LatLngTuple,
-	destination: LatLngTuple
+	destination: LatLngTuple,
+	signal?: AbortSignal
 ): Promise<RouteResponse> {
-	await new Promise((resolve) => setTimeout(resolve, 400));
-	return createMockResponse(start, destination);
+	if (!ROUTES_API_URL) {
+		await new Promise((resolve) => setTimeout(resolve, 400));
+		return parseRouteFeatureCollection(createMockFeatureCollection(start, destination));
+	}
+
+	const response = await fetch(ROUTES_API_URL, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Accept: 'application/geo+json, application/json'
+		},
+		body: JSON.stringify({
+			start: { lat: start[0], lng: start[1] },
+			destination: { lat: destination[0], lng: destination[1] }
+		}),
+		signal
+	});
+	if (!response.ok) throw new Error(`Routes API responded with ${response.status}`);
+
+	return parseRouteFeatureCollection(await response.json());
 }
 
-// --- Dane pokazowe (do usunięcia po podłączeniu backendu) ---
+/** Validates the backend GeoJSON and maps it to `RouteInfo[]` (wheelchair-safe routes first). */
+export function parseRouteFeatureCollection(data: unknown): RouteResponse {
+	if (!isRecord(data) || data.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
+		throw new Error('Invalid routes response: expected a GeoJSON FeatureCollection');
+	}
+
+	const routes = data.features.flatMap((feature, index) => {
+		if (!isRouteFeature(feature)) {
+			console.warn('Skipping invalid route feature:', feature);
+			return [];
+		}
+		return [toRouteInfo(feature, index)];
+	});
+
+	return routes.sort((a, b) => Number(b.isWheelchairSafe) - Number(a.isWheelchairSafe));
+}
+
+function toRouteInfo({ properties, geometry }: RouteFeature, index: number): RouteInfo {
+	const safe = properties.is_wheelchair_safe;
+	return {
+		id: `${properties.route_type}-${index}`,
+		name: safe ? 'Trasa bez barier' : 'Trasa z barierami',
+		routeType: properties.route_type,
+		type: safe ? 'wheelchair' : 'standard',
+		isWheelchairSafe: safe,
+		distanceMeters: properties.distance_m,
+		durationMinutes: properties.time_minutes,
+		// GeoJSON is [lng, lat]; Leaflet expects [lat, lng].
+		coordinates: geometry.coordinates.map(([lng, lat]) => [lat, lng])
+	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function isPosition(value: unknown): value is GeoJsonPosition {
+	return (
+		Array.isArray(value) &&
+		value.length >= 2 &&
+		Number.isFinite(value[0]) &&
+		Number.isFinite(value[1])
+	);
+}
+
+function isRouteFeature(value: unknown): value is RouteFeature {
+	if (!isRecord(value) || !isRecord(value.properties) || !isRecord(value.geometry)) return false;
+	const { properties: p, geometry: g } = value;
+	return (
+		typeof p.route_type === 'string' &&
+		Number.isFinite(p.distance_m) &&
+		Number.isFinite(p.time_minutes) &&
+		typeof p.is_wheelchair_safe === 'boolean' &&
+		g.type === 'LineString' &&
+		Array.isArray(g.coordinates) &&
+		g.coordinates.length >= 2 &&
+		g.coordinates.every(isPosition)
+	);
+}
+
+// --- Formatting for the UI ---
+
+export function formatDistance(meters: number): string {
+	return meters < 1000
+		? `${Math.round(meters)} m`
+		: `${(meters / 1000).toFixed(1).replace('.', ',')} km`;
+}
+
+export function formatDuration(minutes: number): string {
+	const total = Math.max(1, Math.round(minutes));
+	return total < 60 ? `${total} min` : `${Math.floor(total / 60)} h ${total % 60} min`;
+}
+
+// --- Mock data in the backend format (used only without VITE_ROUTES_API_URL) ---
 
 const WALKING_SPEED_KMH = 4.8;
 const WHEELCHAIR_SPEED_KMH = 3.6;
 
-function createMockResponse(start: LatLngTuple, destination: LatLngTuple): RouteResponse {
+function createMockFeatureCollection(
+	start: LatLngTuple,
+	destination: LatLngTuple
+): RouteFeatureCollection {
 	const [lat1, lng1] = start;
 	const [lat2, lng2] = destination;
 
-	// Sztuczny "objazd": dwa punkty przesunięte w bok od linii prostej.
+	// Fake detour: two points shifted sideways from the straight line.
 	const offsetLat = -(lng2 - lng1) * 0.25;
 	const offsetLng = (lat2 - lat1) * 0.25;
 	const detour: LatLngTuple[] = [
@@ -33,27 +143,33 @@ function createMockResponse(start: LatLngTuple, destination: LatLngTuple): Route
 		[lat1 + (lat2 - lat1) * 0.7 + offsetLat, lng1 + (lng2 - lng1) * 0.7 + offsetLng],
 		destination
 	];
-
-	const standardKm = pathLengthKm([start, destination]);
-	const wheelchairKm = pathLengthKm(detour);
+	const direct: LatLngTuple[] = [start, destination];
 
 	return {
-		standard: {
-			id: 'mock-standard',
-			name: 'Trasa standardowa',
-			distance: formatDistance(standardKm),
-			duration: formatDuration(standardKm, WALKING_SPEED_KMH),
-			coordinates: [start, destination],
-			type: 'standard'
+		type: 'FeatureCollection',
+		features: [
+			mockFeature('wheelchair_accessible', detour, WHEELCHAIR_SPEED_KMH, true),
+			mockFeature('shortest', direct, WALKING_SPEED_KMH, false)
+		]
+	};
+}
+
+function mockFeature(
+	routeType: string,
+	points: LatLngTuple[],
+	speedKmh: number,
+	safe: boolean
+): RouteFeature {
+	const meters = pathLengthKm(points) * 1000;
+	return {
+		type: 'Feature',
+		properties: {
+			route_type: routeType,
+			distance_m: Math.round(meters * 10) / 10,
+			time_minutes: Math.round((meters / 1000 / speedKmh) * 60 * 10) / 10,
+			is_wheelchair_safe: safe
 		},
-		wheelchair: {
-			id: 'mock-wheelchair',
-			name: 'Trasa bez barier',
-			distance: formatDistance(wheelchairKm),
-			duration: formatDuration(wheelchairKm, WHEELCHAIR_SPEED_KMH),
-			coordinates: detour,
-			type: 'wheelchair'
-		}
+		geometry: { type: 'LineString', coordinates: points.map(([lat, lng]) => [lng, lat]) }
 	};
 }
 
@@ -71,13 +187,4 @@ function haversineKm([lat1, lng1]: LatLngTuple, [lat2, lng2]: LatLngTuple): numb
 		Math.sin(dLat / 2) ** 2 +
 		Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
 	return 6371 * 2 * Math.asin(Math.sqrt(a));
-}
-
-function formatDistance(km: number): string {
-	return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace('.', ',')} km`;
-}
-
-function formatDuration(km: number, speedKmh: number): string {
-	const minutes = Math.max(1, Math.round((km / speedKmh) * 60));
-	return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
