@@ -19,12 +19,17 @@ import demoRoutesSnapshot from '../data/demoRoutes.json';
  * Oba zwracaja pojedynczy obiekt GeoJSON typu `Feature` (LineString). Jesli trasa nie istnieje, backend
  * odpowiada kodem HTTP 400 z komunikatem `{ "detail": "Blad ORS ..." }`.
  *
- * Glowny adres URL (Base URL) jest brany ze zmiennej `VITE_API_BASE_URL` w pliku `frontend/.env` (zobacz `.env.example`).
- * Jesli go nie ma, aplikacja korzysta z danych testowych (mock) o takiej samej strukturze jak te z backendu.
+ * Glowny adres URL (Base URL): zmienna `VITE_API_BASE_URL` (plik `frontend/.env` lokalnie albo
+ * Environment Variables na Vercelu), a gdy jej nie ma - `DEFAULT_API_BASE_URL` ponizej.
+ * `.env` jest w .gitignore, wiec bez tej wartosci domyslnej build na Vercelu nie znal backendu.
+ * Ustawienie `VITE_API_BASE_URL=` (pusta wartosc) wlacza dane testowe (mock).
  */
 
+const DEFAULT_API_BASE_URL = 'https://opacity-hypnotism-footless.ngrok-free.dev';
+
 const API_BASE_URL: string | undefined =
-	import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') || undefined;
+	(import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).trim().replace(/\/+$/, '') ||
+	undefined;
 
 export const USING_MOCK_ROUTES = !API_BASE_URL;
 
