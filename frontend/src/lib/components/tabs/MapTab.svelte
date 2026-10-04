@@ -1,7 +1,7 @@
 <script lang="ts">
 	import 'leaflet/dist/leaflet.css';
 	import type * as Leaflet from 'leaflet';
-	import { onMount, tick } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import {
 		MIN_ROUTE_DISTANCE_M,
 		RouteApiError,
@@ -20,6 +20,7 @@
 	} from '../../config/map';
 	import ReportObstacle from '#lib/components/ReportObstacle.svelte';
 	import RouteSheet from '#lib/components/RouteSheet.svelte';
+	import { navigationRequest, type NavigationTarget } from '../../state/navigation.svelte';
 
 	type WaypointKind = 'start' | 'destination';
 	interface Toast {
@@ -59,6 +60,7 @@
 	const SERVER_CONNECTION_LOST = 'Utracono połączenie z serwerem';
 	let toast = $state<Toast | null>(null);
 	let locating = false;
+	let mapReady = $state(false);
 
 	let L: typeof Leaflet | undefined;
 	let map: Leaflet.Map | undefined;
@@ -91,6 +93,13 @@
 		if (!toast || toast.retry) return;
 		const timer = setTimeout(() => (toast = null), TOAST_TIMEOUT_MS);
 		return () => clearTimeout(timer);
+	});
+
+	$effect(() => {
+		const target = navigationRequest.target;
+		if (!mapReady || !target) return;
+		navigationRequest.target = null;
+		untrack(() => navigateTo(target));
 	});
 
 	onMount(() => {
@@ -126,10 +135,12 @@
 			map.invalidateSize();
 			resizeObserver = new ResizeObserver(() => map?.invalidateSize());
 			resizeObserver.observe(mapContainer);
+			mapReady = true;
 		});
 
 		return () => {
 			destroyed = true;
+			mapReady = false;
 			abortController?.abort();
 			resizeObserver?.disconnect();
 			map?.off('click', handleMapClick);
@@ -226,9 +237,14 @@
 		const point: Waypoint = { lat: event.latlng.lat, lng: event.latlng.lng };
 
 		if (!start) {
+			if (destination && isTooClose(point, destination)) {
+				showSamePointToast();
+				return;
+			}
 			start = point;
 			placeMarker('start', point);
 			toast = null;
+			if (destination) requestRoutes();
 			return;
 		}
 		if (destination) return;
@@ -282,6 +298,40 @@
 			return;
 		}
 		requestRoutes();
+	}
+
+	/** Cel wybrany poza mapą: ustawia punkt B, a start bierze z lokalizacji (jeśli udostępniona) lub z dotknięcia mapy. */
+	async function navigateTo(target: NavigationTarget) {
+		cancelRequest();
+		clearRoutes();
+		markersLayer?.clearLayers();
+		delete markers.start;
+		delete markers.destination;
+		start = null;
+		destination = { lat: target.lat, lng: target.lng };
+		placeMarker('destination', destination);
+		toast = { tone: 'info', message: `Cel: ${target.name}. Dotknij mapy, aby wybrać start.` };
+
+		// Karta mapy mogła być ukryta - Leaflet musi przeliczyć rozmiar przed centrowaniem.
+		await tick();
+		map?.invalidateSize();
+		map?.setView([target.lat, target.lng], DEFAULT_ZOOM);
+
+		const navigationId = requestId;
+		if (!(await isLocationShared())) return;
+		navigator.geolocation.getCurrentPosition(
+			({ coords }) => {
+				if (!L || navigationId !== requestId || start || !destination) return;
+				const position: Waypoint = { lat: coords.latitude, lng: coords.longitude };
+				if (!L.latLngBounds(KRAKOW_BOUNDS).contains([position.lat, position.lng])) return;
+				if (isTooClose(position, destination)) return;
+				start = position;
+				placeMarker('start', position);
+				requestRoutes();
+			},
+			() => {},
+			{ enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 30_000 }
+		);
 	}
 
 	function loadDemoRoute() {

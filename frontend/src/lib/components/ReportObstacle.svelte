@@ -3,8 +3,8 @@
 
 	const PROCESSING_MS = 2000;
 	const MENU_TEXT = 'Zgłoś przeszkodę na trasie.';
-	const SUCCESS_TEXT =
-		'Dziękujemy! Nasz system wykrył przeszkodę na Twoim zdjęciu. Zgłoszenie zostało zweryfikowane i pomyślnie wysłane.';
+	const COMMUNITY_TEXT =
+		'Dzięki Tobie ktoś inny bezpiecznie dotrze do celu. Razem tworzymy Kraków bez barier.';
 
 	type Phase = 'idle' | 'menu' | 'processing' | 'success';
 
@@ -142,16 +142,23 @@
 			aria-labelledby="report-success-title"
 			aria-describedby="report-success-text"
 		>
-			<span class="report-check" aria-hidden="true">
-				<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-			</span>
-			<h2 id="report-success-title">Zgłoszenie wysłane</h2>
+			<div class="report-heading">
+				<span class="report-badge" aria-hidden="true">
+					<svg viewBox="0 0 24 24">
+						<path
+							d="M12 20.5s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"
+						/>
+						<path d="M8.75 12.25l2.25 2.25 4.25-4.25" />
+					</svg>
+				</span>
+				<h2 id="report-success-title">Potwierdzono zgłoszenie</h2>
+			</div>
 			{#if photoUrl}
 				<img class="report-photo" src={photoUrl} alt="Przesłane zdjęcie przeszkody" />
 			{/if}
-			<p id="report-success-text">{SUCCESS_TEXT}</p>
+			<p id="report-success-text" class="report-community" lang="pl">{COMMUNITY_TEXT}</p>
 			<button class="report-start" type="button" bind:this={okButton} onclick={closeSuccess}>
-				OK
+				Proszę
 			</button>
 		</div>
 	</div>
@@ -250,6 +257,7 @@
 		z-index: 3;
 		inset: 0;
 		display: grid;
+		grid-template: minmax(0, 1fr) / minmax(0, 1fr);
 		place-items: center;
 		padding: var(--odstep-duzy);
 		background: var(--kolor-tla-zaciemnienia);
@@ -291,32 +299,81 @@
 	}
 
 	.report-dialog--success {
-		border-color: var(--kolor-sukcesu);
-		background: var(--kolor-tla-sukcesu);
+		width: var(--szerokosc-okna-podziekowania);
+		max-height: 100%;
+		gap: var(--odstep-duzy);
+		padding: calc(var(--odstep-duzy) * 1.5) var(--odstep-duzy);
+		overflow-y: auto;
+		border-color: color-mix(in srgb, var(--kolor-wyroznienia) 35%, transparent);
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--kolor-wyroznienia) 14%, var(--kolor-tla-karty)) 0%,
+			var(--kolor-tla-karty) 70%
+		);
+	}
+
+	.report-heading {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--odstep-sredni);
+	}
+
+	.report-dialog--success h2 {
+		font-size: 1.375rem;
+		font-weight: 800;
+		letter-spacing: -0.01em;
+	}
+
+	.report-dialog--success .report-community {
+		align-self: stretch;
+		padding: var(--odstep-sredni) var(--odstep-duzy);
+		border-left: 4px solid var(--kolor-wyroznienia);
+		border-radius: var(--zaokraglenie-srednie);
+		background: color-mix(in srgb, var(--kolor-wyroznienia) 10%, transparent);
+		color: var(--kolor-tekstu-podstawowego);
+		font-size: 0.9375rem;
+		font-weight: 500;
+		line-height: 1.6;
+		text-align: justify;
+		overflow-wrap: break-word;
 	}
 
 	.report-processing {
 		font-weight: 600;
 	}
 
-	.report-check {
+	.report-badge {
 		display: grid;
-		width: var(--rozmiar-przycisku-aparatu);
-		height: var(--rozmiar-przycisku-aparatu);
+		width: var(--rozmiar-ikony-podziekowania);
+		height: var(--rozmiar-ikony-podziekowania);
 		place-items: center;
 		border-radius: var(--zaokraglenie-pelne);
-		background: var(--kolor-sukcesu);
-		color: var(--kolor-tla-sukcesu);
+		background: var(--kolor-wyroznienia);
+		box-shadow: 0 0 0 8px color-mix(in srgb, var(--kolor-wyroznienia) 18%, transparent);
+		color: var(--kolor-tekstu-na-wyroznieniu);
 	}
 
-	.report-check svg {
-		width: 55%;
-		height: 55%;
+	.report-badge svg {
+		width: 56%;
+		height: 56%;
 		fill: none;
 		stroke: currentColor;
 		stroke-linecap: round;
 		stroke-linejoin: round;
-		stroke-width: 2.5;
+		stroke-width: 2;
+	}
+
+	/* Zdjęcie kurczy się jako pierwsze, żeby okno zmieściło się w ekranie telefonu. */
+	.report-dialog--success .report-photo {
+		width: 100%;
+		height: var(--wysokosc-zdjecia-podziekowania);
+		min-height: 72px;
+		flex-shrink: 1;
+	}
+
+	.report-dialog--success > :not(.report-photo) {
+		flex-shrink: 0;
 	}
 
 	.report-photo {

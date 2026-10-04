@@ -46,27 +46,6 @@
 		</label>
 	</section>
 
-	<section class="card settings-group" aria-labelledby="{uid}-mobility">
-		<h2 id="{uid}-mobility">Profil mobilności</h2>
-		<fieldset class="field profile-list">
-			<legend class="visually-hidden">Wybierz profil mobilności</legend>
-			{#each mobilityProfiles as profile (profile.value)}
-				<label class="profile-option">
-					<input
-						type="radio"
-						name="{uid}-mobility-profile"
-						value={profile.value}
-						bind:group={settings.mobilityProfile}
-					/>
-					<span class="profile-text">
-						<strong>{profile.label}</strong>
-						<small>{profile.description}</small>
-					</span>
-				</label>
-			{/each}
-		</fieldset>
-	</section>
-
 	<section class="card settings-group" aria-labelledby="{uid}-alerts">
 		<h2 id="{uid}-alerts">Wibracje i alerty</h2>
 		<label class="switch-row">

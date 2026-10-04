@@ -27,8 +27,8 @@
 		},
 		{
 			id: 'facilities',
-			label: 'Dla ciebie',
-			icon: 'M20 5a5 5 0 00-8 2 5 5 0 00-8-2c-5 5 8 15 8 15s17-10 8-15z',
+			label: 'Odkrywaj',
+			icon: 'M12 21a9 9 0 100-18 9 9 0 000 18zM15.5 8.5l-2 5-5 2 2-5 5-2z',
 			component: FacilitiesTab
 		},
 		{
@@ -273,6 +273,12 @@
 	.screen-body {
 		flex: 1;
 		overflow-y: auto;
+		/* Przewijanie działa, ale bez widocznego paska (jak w aplikacji mobilnej). */
+		scrollbar-width: none;
+	}
+
+	.screen-body::-webkit-scrollbar {
+		display: none;
 	}
 
 	.tab-panel {
