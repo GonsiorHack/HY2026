@@ -35,6 +35,8 @@
 
 	const KRAKOW_CENTER: LatLngTuple = [50.06768366766956, 19.989913515829258];
 	const DEFAULT_ZOOM = 16;
+	/* Start zastępczy dla „Nawiguj”, gdy lokalizacja jest wyłączona: TAURON Arena Kraków. */
+	const FALLBACK_START: Waypoint = { lat: 50.06757, lng: 19.99149 };
 	const TOAST_TIMEOUT_MS = 8000;
 	const NAVIGATION_ZOOM = 18;
 	const USER_LOCATION_ZOOM = 17;
@@ -300,7 +302,7 @@
 		requestRoutes();
 	}
 
-	/** Cel wybrany poza mapą: ustawia punkt B, a start bierze z lokalizacji (jeśli udostępniona) lub z dotknięcia mapy. */
+	/** Cel wybrany poza mapą: start z lokalizacji użytkownika (gdy udostępniona i w Krakowie), w innym razie z TAURON Arena. */
 	async function navigateTo(target: NavigationTarget) {
 		cancelRequest();
 		clearRoutes();
@@ -310,7 +312,7 @@
 		start = null;
 		destination = { lat: target.lat, lng: target.lng };
 		placeMarker('destination', destination);
-		toast = { tone: 'info', message: `Cel: ${target.name}. Dotknij mapy, aby wybrać start.` };
+		toast = null;
 
 		// Karta mapy mogła być ukryta - Leaflet musi przeliczyć rozmiar przed centrowaniem.
 		await tick();
@@ -318,20 +320,39 @@
 		map?.setView([target.lat, target.lng], DEFAULT_ZOOM);
 
 		const navigationId = requestId;
-		if (!(await isLocationShared())) return;
-		navigator.geolocation.getCurrentPosition(
-			({ coords }) => {
-				if (!L || navigationId !== requestId || start || !destination) return;
-				const position: Waypoint = { lat: coords.latitude, lng: coords.longitude };
-				if (!L.latLngBounds(KRAKOW_BOUNDS).contains([position.lat, position.lng])) return;
-				if (isTooClose(position, destination)) return;
-				start = position;
-				placeMarker('start', position);
-				requestRoutes();
-			},
-			() => {},
-			{ enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 30_000 }
-		);
+		const userPosition = (await isLocationShared()) ? await getUserPosition() : null;
+		if (navigationId !== requestId || start || !destination) return;
+
+		const usable =
+			userPosition &&
+			L?.latLngBounds(KRAKOW_BOUNDS).contains([userPosition.lat, userPosition.lng]) &&
+			!isTooClose(userPosition, destination);
+		if (usable) {
+			showUserLocation([userPosition.lat, userPosition.lng]);
+			startNavigationFrom(userPosition);
+			return;
+		}
+		if (isTooClose(FALLBACK_START, destination)) {
+			toast = { tone: 'info', message: `Cel: ${target.name}. Dotknij mapy, aby wybrać start.` };
+			return;
+		}
+		startNavigationFrom(FALLBACK_START);
+	}
+
+	function startNavigationFrom(point: Waypoint) {
+		start = { ...point };
+		placeMarker('start', start);
+		requestRoutes();
+	}
+
+	function getUserPosition(): Promise<Waypoint | null> {
+		return new Promise((resolve) => {
+			navigator.geolocation.getCurrentPosition(
+				({ coords }) => resolve({ lat: coords.latitude, lng: coords.longitude }),
+				() => resolve(null),
+				{ enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 30_000 }
+			);
+		});
 	}
 
 	function loadDemoRoute() {
