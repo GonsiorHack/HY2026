@@ -20,16 +20,15 @@ import demoRoutesSnapshot from '../data/demoRoutes.json';
  * odpowiada kodem HTTP 400 z komunikatem `{ "detail": "Blad ORS ..." }`.
  *
  * Glowny adres URL (Base URL): zmienna `VITE_API_BASE_URL` (plik `frontend/.env` lokalnie albo
- * Environment Variables na Vercelu), a gdy jej nie ma - `DEFAULT_API_BASE_URL` ponizej.
- * `.env` jest w .gitignore, wiec bez tej wartosci domyslnej build na Vercelu nie znal backendu.
+ * Environment Variables na Vercelu). Starsza nazwa `VITE_API_BASE` jest również obsługiwana.
+ * Brak obu zmiennych zgłasza błąd konfiguracji podczas pobierania tras, nie podczas renderowania strony.
  * Ustawienie `VITE_API_BASE_URL=` (pusta wartosc) wlacza dane testowe (mock).
  */
 
-const DEFAULT_API_BASE_URL = import.meta.env.VITE_API_BASE;
+const CONFIGURED_API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_BASE;
 
 export const API_BASE_URL: string | undefined =
-	(import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).trim().replace(/\/+$/, '') ||
-	undefined;
+	CONFIGURED_API_BASE_URL?.trim().replace(/\/+$/, '') || undefined;
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -66,6 +65,9 @@ export async function fetchRouteComparison(
 	destination: LatLngTuple,
 	signal?: AbortSignal
 ): Promise<RouteResponse> {
+	if (CONFIGURED_API_BASE_URL === undefined) {
+		throw new RouteApiError('server', 'Nie skonfigurowano VITE_API_BASE_URL.');
+	}
 	if (!API_BASE_URL) {
 		await new Promise((resolve) => setTimeout(resolve, 400));
 		if (signal?.aborted) throw new RouteApiError('aborted', 'Request aborted');

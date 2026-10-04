@@ -1,7 +1,6 @@
 import type { GeocodeErrorKind, GeocodeResult } from '../types/geocode';
 import { API_BASE_URL } from './routes';
 
-const DEFAULT_GEOCODE_BASE_URL = 'https://opacity-hypnotism-footless.ngrok-free.dev';
 const GEOCODE_TIMEOUT_MS = 10_000;
 
 /** Backend odrzuca krótsze zapytania kodem 400 („Query is too short.”). */
@@ -30,7 +29,9 @@ export async function fetchGeocode(query: string, signal?: AbortSignal): Promise
 	const trimmed = query.trim();
 	if (trimmed.length < MIN_GEOCODE_QUERY_LENGTH) return [];
 
-	const baseUrl = API_BASE_URL ?? DEFAULT_GEOCODE_BASE_URL;
+	if (!API_BASE_URL) {
+		throw new GeocodeError('network', 'Nie skonfigurowano VITE_API_BASE_URL dla geokodowania.');
+	}
 	// Ręczne łączenie sygnałów zamiast `AbortSignal.any` (wymaga iOS 17.4+).
 	const controller = new AbortController();
 	let timedOut = false;
@@ -45,7 +46,7 @@ export async function fetchGeocode(query: string, signal?: AbortSignal): Promise
 	let response: Response;
 	let body: unknown;
 	try {
-		response = await fetch(`${baseUrl}/api/geocode?query=${encodeURIComponent(trimmed)}`, {
+		response = await fetch(`${API_BASE_URL}/api/geocode?query=${encodeURIComponent(trimmed)}`, {
 			headers: {
 				Accept: 'application/json',
 				// Bez tego nagłówka darmowy tunel ngrok zwraca stronę ostrzeżenia w HTML zamiast JSON.
