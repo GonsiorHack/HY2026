@@ -1,15 +1,4 @@
-import os
-import random
-from collections import defaultdict
-from pathlib import Path
-from PIL import Image
 
-import torch
-import torchvision
-from torch import nn, optim
-from torch.utils.data import DataLoader
-from torchvision import datasets, models, transforms
-import torchvision.transforms.functional as TF
 
 DATA_DIR = "data/learning"
 BATCH_SIZE = 4
