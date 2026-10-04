@@ -80,18 +80,38 @@
 	--kolor-tekstu-kontrolek-mapy: #0f172a;
 	--kolor-obramowania-kontrolek-mapy: #cbd5e1;
 	--kolor-linku-mapy: #0369a1;
-	--kolor-trasy-standardowej: #64748b;
-	--kolor-trasy-bez-barier: #15803d;
-	--kolor-punktu-startu: #007aff;
-	--kolor-punktu-celu: #dc2626;
+	/* Wybrana trasa: linia ciągła w kolorze swojego typu.
+	   Druga trasa: szara, kropkowana (dotknij, aby wybrać). */
+	--kolor-trasy-dostepnej: #007aff;
+	--kolor-trasy-standardowej: #7c3aed;
+	--kolor-trasy-nieaktywnej: #94a3b8;
+	/* Punkty A/B w barwach marki: A - biały z granatową obwódką, B - granatowy. */
+	--kolor-punktu-startu: #ffffff;
+	--kolor-tekstu-punktu-startu: #3063ab;
+	--kolor-obwodki-punktu-startu: #3063ab;
+	--kolor-punktu-celu: #3063ab;
+	--kolor-lokalizacji-uzytkownika: #0ea5e9;
+	--kolor-tla-atrybucji-mapy: #ffffff73;
 	--kolor-tekstu-na-znaczniku: #ffffff;
 	--kolor-obwodki-znacznika: #ffffff;
-	--grubosc-linii-trasy: 5px;
-	--wzor-przerywanej-trasy: 2 10;
+	--grubosc-linii-trasy-aktywnej: 6px;
+	--grubosc-linii-trasy-nieaktywnej: 5px;
+	/* Kropki: kreska ~0 + zaokrąglone końce = okrągłe punkty co 10px. */
+	--wzor-trasy-nieaktywnej: 0.1 10;
+	/* Szerokość niewidocznego obszaru dotyku wokół linii trasy (łatwiejsze trafienie palcem). */
+	--grubosc-obszaru-dotyku-trasy: 28px;
 	--rozmiar-znacznika-mapy: 32px;
 	--grubosc-obwodki-znacznika: 3px;
 	--cien-panelu-mapy: 0 4px 16px #0f172a2e;
 	--cien-znacznika-mapy: 0 2px 6px #0f172a59;
+
+	/* Wysuwany panel tras (dolna szuflada). */
+	--kolor-uchwytu-panelu: #cbd5e1;
+	--cien-panelu-tras: 0 -4px 24px #0f172a2e;
+	--czas-animacji-panelu: 280ms;
+	/* Etykiety cech trasy: pozytywne (zielone) i ostrzegawcze (bursztynowe). */
+	--kolor-tekstu-uwagi: #92400e;
+	--kolor-tla-uwagi: #fef3c7;
 
 	/* Zgłaszanie przeszkody zdjęciem (przycisk aparatu na mapie). */
 	--kolor-sukcesu: #15803d;
@@ -126,6 +146,10 @@
 
 	/* Cień pływających paneli aplikacji nad mapą (podpowiedź, podsumowanie tras). */
 	--cien-panelu-mapy: 0 4px 16px #00000080;
+	--cien-panelu-tras: 0 -4px 24px #00000080;
+	--kolor-uchwytu-panelu: #475569;
+	--kolor-tekstu-uwagi: #fcd34d;
+	--kolor-tla-uwagi: #451a03;
 
 	--kolor-obramowania-nawigacji: #475569;
 
@@ -171,13 +195,22 @@
 	--kolor-tekstu-kontrolek-mapy: #000000;
 	--kolor-obramowania-kontrolek-mapy: #000000;
 	--kolor-linku-mapy: #0040dd;
-	--kolor-trasy-standardowej: #000000;
-	--kolor-trasy-bez-barier: #006b1f;
-	--kolor-punktu-startu: #0040dd;
-	--kolor-punktu-celu: #b00000;
+	--kolor-trasy-dostepnej: #0040dd;
+	--kolor-trasy-standardowej: #5b21b6;
+	--kolor-trasy-nieaktywnej: #4b5563;
+	--kolor-punktu-startu: #ffffff;
+	--kolor-tekstu-punktu-startu: #000000;
+	--kolor-obwodki-punktu-startu: #000000;
+	--kolor-punktu-celu: #0040dd;
+	--kolor-tla-atrybucji-mapy: #ffffff;
 	--kolor-tekstu-na-znaczniku: #ffffff;
 	--kolor-obwodki-znacznika: #000000;
-	--grubosc-linii-trasy: 6px;
+	--grubosc-linii-trasy-aktywnej: 7px;
+	--grubosc-linii-trasy-nieaktywnej: 6px;
+	--kolor-uchwytu-panelu: #000000;
+	--cien-panelu-tras: none;
+	--kolor-tekstu-uwagi: #000000;
+	--kolor-tla-uwagi: #ffffff;
 
 	--kolor-sukcesu: #006b1f;
 	--kolor-tla-sukcesu: #ffffff;
@@ -213,6 +246,10 @@
 
 	--kolor-sukcesu: #4ade80;
 	--kolor-tla-sukcesu: #000000;
+
+	--kolor-uchwytu-panelu: #ffffff;
+	--kolor-tekstu-uwagi: #ffffff;
+	--kolor-tla-uwagi: #000000;
 }
 
 :root[data-text-size='large'] {

@@ -7,7 +7,7 @@ export const options = {
 	csrf_trusted_origins: [],
 	service_worker_options: undefined,
 	templates: {
-		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\n<html lang=\"pl\">\n\t<head>\n\t\t<meta charset=\"utf-8\" />\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n\t\t<meta name=\"text-scale\" content=\"scale\" />\n\t\t" + head + "\n\t</head>\n\t<body data-sveltekit-preload-data=\"hover\">\n\t\t<div style=\"display: contents\">" + body + "</div>\n\t</body>\n</html>\n",
+		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\n<html lang=\"pl\" data-theme=\"dark\">\n\t<head>\n\t\t<meta charset=\"utf-8\" />\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n\t\t<meta name=\"text-scale\" content=\"scale\" />\n\t\t<script>\n\t\t\ttry {\n\t\t\t\tvar saved = JSON.parse(localStorage.getItem('krakow-dostepny:ustawienia') || 'null');\n\t\t\t\tif (saved && saved.theme === 'light') document.documentElement.dataset.theme = 'light';\n\t\t\t\tif (saved && (saved.highContrast || saved.theme === 'contrast'))\n\t\t\t\t\tdocument.documentElement.dataset.contrast = 'high';\n\t\t\t} catch (e) {}\n\t\t</script>\n\t\t" + head + "\n\t</head>\n\t<body data-sveltekit-preload-data=\"hover\">\n\t\t<div style=\"display: contents\">" + body + "</div>\n\t</body>\n</html>\n",
 		error
 	}
 };

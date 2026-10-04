@@ -5,16 +5,21 @@
 	import {
 		MIN_ROUTE_DISTANCE_M,
 		RouteApiError,
-		USING_MOCK_ROUTES,
 		collapseIdenticalRoutes,
 		distanceMeters,
 		fetchRouteComparison,
-		formatDistance,
 		formatDuration
 	} from '../../services/routes';
-	import type { LatLngTuple, RouteInfo, RouteResponse, Waypoint } from '../../types/route';
-	import { DEMO_ROUTE, TILE_SUBDOMAINS, TILE_URL } from '../../config/map';
+	import type { LatLngTuple, RouteResponse, Waypoint } from '../../types/route';
+	import {
+		DEMO_ROUTE,
+		KRAKOW_BOUNDS,
+		MAP_ATTRIBUTION_HTML,
+		TILE_SUBDOMAINS,
+		TILE_URL
+	} from '../../config/map';
 	import ReportObstacle from '#lib/components/ReportObstacle.svelte';
+	import RouteSheet from '#lib/components/RouteSheet.svelte';
 
 	type WaypointKind = 'start' | 'destination';
 	interface Toast {
@@ -22,40 +27,64 @@
 		tone: 'error' | 'warning' | 'info';
 		retry?: boolean;
 	}
+	interface RouteLayers {
+		line: Leaflet.Polyline;
+		hitArea: Leaflet.Polyline;
+	}
 
 	const KRAKOW_CENTER: LatLngTuple = [50.06768366766956, 19.989913515829258];
 	const DEFAULT_ZOOM = 16;
 	const TOAST_TIMEOUT_MS = 8000;
+	const NAVIGATION_ZOOM = 18;
+	const USER_LOCATION_ZOOM = 17;
+	const GEOLOCATION_TIMEOUT_MS = 10_000;
+	const LOCATE_ICON =
+		'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
+	// Osobne warstwy (pane): linie tras pod niewidocznymi obszarami dotyku, oba pod znacznikami A/B.
+	const ROUTE_PANE = 'routes';
+	const ROUTE_HIT_PANE = 'route-hit-areas';
 
 	let mapContainer: HTMLDivElement;
 	let hintBar = $state<HTMLElement>();
-	let summaryCard = $state<HTMLElement>();
+	let routeSheet = $state<ReturnType<typeof RouteSheet>>();
 	let summaryHeight = $state(0);
 
 	let start = $state<Waypoint | null>(null);
 	let destination = $state<Waypoint | null>(null);
 	let routes = $state<RouteResponse | null>(null);
 	let identicalRoutes = $state(false);
+	let activeRouteId = $state<string | null>(null);
+	let navigating = $state(false);
 	let loading = $state(false);
+	const SERVER_CONNECTION_LOST = 'Utracono połączenie z serwerem';
 	let toast = $state<Toast | null>(null);
+	let locating = false;
 
 	let L: typeof Leaflet | undefined;
 	let map: Leaflet.Map | undefined;
 	let markersLayer: Leaflet.LayerGroup | undefined;
 	let routesLayer: Leaflet.LayerGroup | undefined;
 	let zoomControl: Leaflet.Control.Zoom | undefined;
+	let userLocationLayer: Leaflet.LayerGroup | undefined;
+	let locateButton: HTMLButtonElement | undefined;
 	const markers: Partial<Record<WaypointKind, Leaflet.Marker>> = {};
+	const routeLayers = new Map<string, RouteLayers>();
 	let requestId = 0;
 	let abortController: AbortController | undefined;
 
+	const activeRoute = $derived(routes?.find((route) => route.id === activeRouteId));
 	const hint = $derived(
 		loading
 			? 'Wyznaczanie trasy…'
 			: !start
-				? 'Dotknij mapy, aby wybrać punkt startowy (A).'
+				? 'Wybierz punkt startowy.'
 				: !destination
-					? 'Teraz wybierz cel podróży (B).'
-					: 'Przeciągnij A lub B, aby zmienić trasę.'
+					? 'Teraz wybierz cel podróży.'
+					: navigating && activeRoute
+						? `Nawigacja: ${formatDuration(activeRoute.durationMinutes)} do celu.`
+						: routes && routes.length > 1
+							? 'Przesuń punkty, aby zmienić trasę.'
+							: 'Przeciągnij A lub B, aby zmienić trasę.'
 	);
 
 	$effect(() => {
@@ -76,12 +105,21 @@
 				KRAKOW_CENTER,
 				DEFAULT_ZOOM
 			);
+			// Kontrolki w rogu Leaflet układa od dołu w kolejności dodania: atrybucja, lokalizacja, zoom.
+			L.control
+				.attribution({ position: 'bottomright', prefix: false })
+				.addAttribution(MAP_ATTRIBUTION_HTML)
+				.addTo(map);
+			createLocateControl(L).addTo(map);
 			zoomControl = L.control.zoom({ position: 'bottomright' }).addTo(map);
 			L.tileLayer(TILE_URL, {
 				subdomains: TILE_SUBDOMAINS,
 				maxZoom: 19
 			}).addTo(map);
+			map.createPane(ROUTE_PANE).style.zIndex = '400';
+			map.createPane(ROUTE_HIT_PANE).style.zIndex = '450';
 			routesLayer = L.layerGroup().addTo(map);
+			userLocationLayer = L.layerGroup().addTo(map);
 			markersLayer = L.layerGroup().addTo(map);
 			map.on('click', handleMapClick);
 
@@ -96,11 +134,92 @@
 			resizeObserver?.disconnect();
 			map?.off('click', handleMapClick);
 			map?.remove();
-			map = markersLayer = routesLayer = zoomControl = L = undefined;
+			map = markersLayer = routesLayer = userLocationLayer = zoomControl = L = undefined;
+			locateButton = undefined;
+			routeLayers.clear();
 			delete markers.start;
 			delete markers.destination;
 		};
 	});
+
+	function createLocateControl(leaflet: typeof Leaflet): Leaflet.Control {
+		const control = new leaflet.Control({ position: 'bottomright' });
+		control.onAdd = () => {
+			const container = leaflet.DomUtil.create('div', 'leaflet-bar leaflet-control locate-control');
+			const button = leaflet.DomUtil.create('button', 'locate-btn', container);
+			button.type = 'button';
+			button.title = 'Pokaż moją lokalizację';
+			button.setAttribute('aria-label', 'Pokaż moją lokalizację');
+			button.innerHTML = LOCATE_ICON;
+			leaflet.DomEvent.disableClickPropagation(container);
+			leaflet.DomEvent.on(button, 'click', centerOnUser);
+			locateButton = button;
+			return container;
+		};
+		return control;
+	}
+
+	/** Centruje mapę na GPS użytkownika; poza Krakowem lub bez zgody wraca do trasy / centrum miasta. */
+	function centerOnUser() {
+		if (!map || locating) return;
+		if (!('geolocation' in navigator)) {
+			recenterFallback('Lokalizacja jest niedostępna na tym urządzeniu.');
+			return;
+		}
+		setLocating(true);
+		navigator.geolocation.getCurrentPosition(
+			({ coords }) => {
+				setLocating(false);
+				if (!L || !map) return;
+				const position: LatLngTuple = [coords.latitude, coords.longitude];
+				if (!L.latLngBounds(KRAKOW_BOUNDS).contains(position)) {
+					recenterFallback('Jesteś poza Krakowem.');
+					return;
+				}
+				showUserLocation(position);
+				map.flyTo(position, Math.max(map.getZoom(), USER_LOCATION_ZOOM));
+			},
+			(error) => {
+				setLocating(false);
+				recenterFallback(
+					error.code === error.PERMISSION_DENIED
+						? 'Brak zgody na dostęp do lokalizacji.'
+						: 'Nie udało się ustalić lokalizacji.'
+				);
+			},
+			{ enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 30_000 }
+		);
+	}
+
+	function setLocating(value: boolean) {
+		locating = value;
+		locateButton?.classList.toggle('is-locating', value);
+		locateButton?.setAttribute('aria-busy', String(value));
+	}
+
+	function recenterFallback(reason: string) {
+		if (!map) return;
+		if (routes?.length) {
+			fitToRoutes();
+			toast = { tone: 'info', message: `${reason} Pokazano wyznaczoną trasę.` };
+		} else if (start) {
+			map.flyTo([start.lat, start.lng], Math.max(map.getZoom(), DEFAULT_ZOOM));
+			toast = { tone: 'info', message: `${reason} Pokazano punkt startowy.` };
+		} else {
+			map.flyTo(KRAKOW_CENTER, DEFAULT_ZOOM);
+			toast = { tone: 'info', message: `${reason} Pokazano centrum Krakowa.` };
+		}
+	}
+
+	function showUserLocation(position: LatLngTuple) {
+		if (!L || !userLocationLayer) return;
+		userLocationLayer.clearLayers();
+		L.circleMarker(position, {
+			radius: 8,
+			className: 'user-location',
+			interactive: false
+		}).addTo(userLocationLayer);
+	}
 
 	function handleMapClick(event: Leaflet.LeafletMouseEvent) {
 		if (loading) return;
@@ -212,16 +331,21 @@
 			const response = await fetchRouteComparison(from, to, controller.signal);
 			if (currentRequest !== requestId) return;
 
+			const offline = response.some((route) => route.offline);
+			if (offline) {
+				// Trasa demo ma własne punkty A/B - przesuwamy znaczniki, żeby pasowały do linii.
+				start = { ...DEMO_ROUTE.start };
+				destination = { ...DEMO_ROUTE.destination };
+				placeMarker('start', start);
+				placeMarker('destination', destination);
+			}
+
 			const { routes: visibleRoutes, identical } = collapseIdenticalRoutes(response);
 			routes = visibleRoutes;
 			identicalRoutes = identical;
-			if (visibleRoutes.some((route) => route.fallback)) {
-				toast = {
-					tone: 'warning',
-					retry: true,
-					message:
-						'Serwer tras jest niedostępny - pokazano trasę zapasową (offline). Spróbuj ponownie za chwilę.'
-				};
+			activeRouteId = visibleRoutes[0]?.id ?? null;
+			if (offline) {
+				toast = { tone: 'warning', message: SERVER_CONNECTION_LOST };
 			} else if (!visibleRoutes.some((route) => route.isWheelchairSafe)) {
 				toast = {
 					tone: 'warning',
@@ -251,20 +375,10 @@
 			case 'no-route':
 				return {
 					tone: 'error',
-					message: 'Nie istnieje trasa między wybranymi punktami. Przesuń A lub B w inne miejsce.'
-				};
-			case 'network':
-				return {
-					tone: 'error',
-					retry: true,
-					message: 'Brak połączenia z serwerem tras. Sprawdź internet i spróbuj ponownie.'
+					message: 'Nie istnieje trasa między wybranymi punktami. Wybierz inne punkty.'
 				};
 			default:
-				return {
-					tone: 'error',
-					retry: true,
-					message: 'Serwer tras zwrócił błąd. Spróbuj ponownie za chwilę.'
-				};
+				return { tone: 'error', retry: true, message: SERVER_CONNECTION_LOST };
 		}
 	}
 
@@ -277,25 +391,70 @@
 
 	function clearRoutes() {
 		routesLayer?.clearLayers();
+		routeLayers.clear();
 		routes = null;
 		identicalRoutes = false;
+		activeRouteId = null;
+		navigating = false;
 		summaryHeight = 0;
 	}
 
 	async function drawRoutes(response: RouteResponse) {
-		if (!L || !map || !routesLayer) return;
+		if (!L || !routesLayer) return;
 
-		for (const route of [...response].reverse()) {
-			L.polyline(route.coordinates, {
+		for (const route of response) {
+			const line = L.polyline(route.coordinates, {
+				pane: ROUTE_PANE,
 				className: `route-line route-line--${route.type}`,
 				interactive: false
 			}).addTo(routesLayer);
+			// Szeroka, niewidoczna linia = większy obszar dotyku niż sama (cienka) przerywana trasa.
+			const hitArea = L.polyline(route.coordinates, {
+				pane: ROUTE_HIT_PANE,
+				className: 'route-hit-area',
+				bubblingMouseEvents: false
+			}).addTo(routesLayer);
+			hitArea.on('click', () => selectRoute(route.id));
+			routeLayers.set(route.id, { line, hitArea });
 		}
+		applyRouteStyles();
 
 		await tick();
-		if (!map) return;
+		fitToRoutes();
+	}
+
+	function selectRoute(routeId: string) {
+		if (routeId === activeRouteId || !routeLayers.has(routeId)) return;
+		activeRouteId = routeId;
+		applyRouteStyles();
+	}
+
+	/** Aktywna trasa: pełna niebieska linia na wierzchu. Pozostałe: wyciszone, przerywane, klikalne. */
+	function applyRouteStyles() {
+		for (const [routeId, { line, hitArea }] of routeLayers) {
+			const active = routeId === activeRouteId;
+			const lineElement = line.getElement();
+			lineElement?.classList.toggle('route-line--active', active);
+			lineElement?.classList.toggle('route-line--inactive', !active);
+			hitArea.getElement()?.classList.toggle('route-hit-area--active', active);
+		}
+		const active = activeRouteId ? routeLayers.get(activeRouteId) : undefined;
+		active?.line.bringToFront();
+		// Aktywny obszar dotyku na wierzchu: dotknięcie wspólnego odcinka nie przełącza trasy.
+		active?.hitArea.bringToFront();
+	}
+
+	function toggleNavigation() {
+		if (!map || !start) return;
+		navigating = !navigating;
+		if (navigating) map.flyTo([start.lat, start.lng], NAVIGATION_ZOOM);
+		else fitToRoutes();
+	}
+
+	function fitToRoutes() {
+		if (!L || !map || !routes?.length) return;
 		const spacing = parseFloat(getComputedStyle(mapContainer).getPropertyValue('--odstep-duzy'));
-		const bounds = L.latLngBounds(response.flatMap((route) => route.coordinates));
+		const bounds = L.latLngBounds(routes.flatMap((route) => route.coordinates));
 		if (start) bounds.extend([start.lat, start.lng]);
 		if (destination) bounds.extend([destination.lat, destination.lng]);
 		const zoomEl = zoomControl?.getContainer();
@@ -304,7 +463,7 @@
 			: 0;
 		map.fitBounds(bounds, {
 			paddingTopLeft: [spacing, spacing + (hintBar?.offsetHeight ?? 0)],
-			paddingBottomRight: [spacing + zoomInset, spacing + (summaryCard?.offsetHeight ?? 0)]
+			paddingBottomRight: [spacing + zoomInset, spacing + (routeSheet?.collapsedHeight() ?? 0)]
 		});
 	}
 
@@ -315,12 +474,36 @@
 		delete markers.start;
 		delete markers.destination;
 		start = destination = toast = null;
-		map?.setView(KRAKOW_CENTER, DEFAULT_ZOOM);
+		recenterAfterReset();
 	}
 
-	function routeLabel(route: RouteInfo) {
-		if (identicalRoutes) return 'Obie trasy';
-		return route.isWheelchairSafe ? 'Dla wózka' : 'Bariery';
+	/** Po wyczyszczeniu: lokalizacja użytkownika (tylko gdy już ją udostępnił), w innym razie widok startowy. */
+	async function recenterAfterReset() {
+		const resetId = requestId;
+		map?.flyTo(KRAKOW_CENTER, DEFAULT_ZOOM);
+		if (!(await isLocationShared())) return;
+		navigator.geolocation.getCurrentPosition(
+			({ coords }) => {
+				if (!L || !map || resetId !== requestId || start) return;
+				const position: LatLngTuple = [coords.latitude, coords.longitude];
+				if (!L.latLngBounds(KRAKOW_BOUNDS).contains(position)) return;
+				showUserLocation(position);
+				map.flyTo(position, USER_LOCATION_ZOOM);
+			},
+			() => {},
+			{ enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 30_000 }
+		);
+	}
+
+	// Sprawdza zgodę bez wyświetlania pytania o dostęp do lokalizacji.
+	async function isLocationShared(): Promise<boolean> {
+		if (!('geolocation' in navigator) || !navigator.permissions) return false;
+		try {
+			const status = await navigator.permissions.query({ name: 'geolocation' });
+			return status.state === 'granted';
+		} catch {
+			return false;
+		}
 	}
 </script>
 
@@ -377,42 +560,16 @@
 	</div>
 
 	{#if routes && routes.length > 0}
-		<div
-			class="route-summary"
-			bind:this={summaryCard}
-			bind:offsetHeight={summaryHeight}
-			aria-live="polite"
-		>
-			<ul class="route-list">
-				{#each routes as route (route.id)}
-					<li class="route-row">
-						<span class="legend-line legend-line--{route.type}" aria-hidden="true"></span>
-						<div class="route-text">
-							<strong>{route.name}</strong>
-							<span class="route-meta"
-								>{formatDistance(route.distanceMeters)} · {formatDuration(
-									route.durationMinutes
-								)}</span
-							>
-							{#if identicalRoutes}
-								<span class="route-identical"
-									>Trasa bez barier i standardowa pokrywają się - ten sam przebieg, dystans i czas.</span
-								>
-							{/if}
-							{#if route.note}
-								<span class="route-note">{route.note}</span>
-							{/if}
-						</div>
-						<span class="route-tag route-tag--{route.type}">{routeLabel(route)}</span>
-					</li>
-				{/each}
-			</ul>
-			{#if USING_MOCK_ROUTES}
-				<p class="summary-note">Dane przykładowe - trasy wyznaczy serwer.</p>
-			{:else if routes.some((route) => route.fallback)}
-				<p class="summary-note">Trasa zapasowa (offline) - serwer tras jest niedostępny.</p>
-			{/if}
-		</div>
+		<RouteSheet
+			bind:this={routeSheet}
+			bind:visibleHeight={summaryHeight}
+			{routes}
+			{activeRouteId}
+			{navigating}
+			identical={identicalRoutes}
+			onselect={selectRoute}
+			onstartnavigation={toggleNavigation}
+		/>
 	{/if}
 
 	<ReportObstacle />
@@ -624,96 +781,6 @@
 		outline-offset: 2px;
 	}
 
-	.route-summary {
-		position: absolute;
-		z-index: 1;
-		right: max(var(--odstep-sredni), env(safe-area-inset-right, 0px));
-		bottom: max(var(--odstep-sredni), env(safe-area-inset-bottom, 0px));
-		left: max(var(--odstep-sredni), env(safe-area-inset-left, 0px));
-		display: flex;
-		flex-direction: column;
-		gap: var(--odstep-maly);
-		padding: var(--odstep-sredni);
-		border: 1px solid var(--kolor-obramowania);
-		border-radius: var(--zaokraglenie-duze);
-		background: var(--kolor-tla-przezroczystej-karty);
-		box-shadow: var(--cien-panelu-mapy);
-		color: var(--kolor-tekstu-podstawowego);
-	}
-
-	.route-list {
-		display: flex;
-		flex-direction: column;
-		gap: var(--odstep-maly);
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.route-row {
-		display: flex;
-		align-items: center;
-		gap: var(--odstep-sredni);
-	}
-
-	.legend-line {
-		flex-shrink: 0;
-		width: var(--rozmiar-znacznika-mapy);
-		height: 0;
-		border-top: var(--grubosc-linii-trasy) solid var(--kolor-trasy-standardowej);
-		border-radius: var(--zaokraglenie-pelne);
-	}
-
-	.legend-line--wheelchair {
-		border-top-style: dotted;
-		border-top-color: var(--kolor-trasy-bez-barier);
-	}
-
-	.route-text {
-		display: flex;
-		min-width: 0;
-		flex: 1;
-		flex-direction: column;
-		font-size: 0.875rem;
-	}
-
-	.route-meta {
-		color: var(--kolor-tekstu-drugorzednego);
-		font-size: 0.8125rem;
-	}
-
-	.route-identical {
-		color: var(--kolor-trasy-bez-barier);
-		font-size: 0.75rem;
-		font-weight: 600;
-	}
-
-	.route-note {
-		color: var(--kolor-tekstu-drugorzednego);
-		font-size: 0.75rem;
-	}
-
-	.route-tag {
-		padding: var(--odstep-bardzo-maly) var(--odstep-maly);
-		border-radius: var(--zaokraglenie-male);
-		background: var(--kolor-tla-elementu-drugorzednego);
-		color: var(--kolor-tekstu-podstawowego);
-		font-size: 0.6875rem;
-		font-weight: 700;
-		white-space: nowrap;
-	}
-
-	.route-tag--wheelchair {
-		background: var(--kolor-trasy-bez-barier);
-		color: var(--kolor-tekstu-na-znaczniku);
-	}
-
-	.summary-note {
-		margin: 0;
-		color: var(--kolor-tekstu-drugorzednego);
-		font-size: 0.75rem;
-	}
-
 	.map-canvas :global(.leaflet-tile) {
 		filter: none;
 	}
@@ -735,21 +802,54 @@
 		color: var(--kolor-tekstu-kontrolek-mapy);
 	}
 
+	/* Wybrana trasa - ciągła, w kolorze swojego typu; druga - szara i kropkowana. */
 	.map-canvas :global(.route-line) {
 		fill: none;
+		stroke-dasharray: var(--wzor-trasy-nieaktywnej);
 		stroke-linecap: round;
 		stroke-linejoin: round;
 		stroke-opacity: 1;
-		stroke-width: var(--grubosc-linii-trasy);
+		stroke-width: var(--grubosc-linii-trasy-nieaktywnej);
+		transition:
+			stroke 200ms ease,
+			stroke-width 200ms ease;
+	}
+
+	.map-canvas :global(.route-line--wheelchair) {
+		stroke: var(--kolor-trasy-dostepnej);
 	}
 
 	.map-canvas :global(.route-line--standard) {
 		stroke: var(--kolor-trasy-standardowej);
 	}
 
-	.map-canvas :global(.route-line--wheelchair) {
-		stroke: var(--kolor-trasy-bez-barier);
-		stroke-dasharray: var(--wzor-przerywanej-trasy);
+	.map-canvas :global(.route-line--inactive) {
+		stroke: var(--kolor-trasy-nieaktywnej);
+	}
+
+	.map-canvas :global(.route-line--active) {
+		stroke-dasharray: none;
+		stroke-width: var(--grubosc-linii-trasy-aktywnej);
+	}
+
+	/* Niewidoczna, ale "malowana" linia (stroke-opacity: 0), więc nadal przyjmuje dotknięcia. */
+	.map-canvas :global(.route-hit-area) {
+		fill: none;
+		stroke: #000;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-opacity: 0;
+		stroke-width: var(--grubosc-obszaru-dotyku-trasy);
+	}
+
+	.map-canvas :global(.route-hit-area--active) {
+		cursor: default;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.map-canvas :global(.route-line) {
+			transition: none;
+		}
 	}
 
 	.map-canvas :global(.map-marker) {
@@ -775,10 +875,79 @@
 	}
 
 	.map-canvas :global(.map-marker--start) {
+		border-color: var(--kolor-obwodki-punktu-startu);
 		background: var(--kolor-punktu-startu);
+		color: var(--kolor-tekstu-punktu-startu);
 	}
 
 	.map-canvas :global(.map-marker--destination) {
 		background: var(--kolor-punktu-celu);
+	}
+
+	.map-canvas :global(.locate-btn) {
+		display: grid;
+		width: 30px;
+		height: 30px;
+		padding: 5px;
+		place-items: center;
+		border: none;
+		background: var(--kolor-tla-kontrolek-mapy);
+		color: var(--kolor-tekstu-kontrolek-mapy);
+		cursor: pointer;
+	}
+
+	.map-canvas :global(.locate-btn svg) {
+		width: 100%;
+		height: 100%;
+	}
+
+	.map-canvas :global(.locate-btn:hover) {
+		background: var(--kolor-tla-elementu-drugorzednego);
+	}
+
+	.map-canvas :global(.locate-btn:focus-visible) {
+		outline: 2px solid var(--kolor-wyroznienia);
+		outline-offset: -2px;
+	}
+
+	.map-canvas :global(.locate-btn.is-locating svg) {
+		color: var(--kolor-wyroznienia);
+		animation: spin 1.2s linear infinite;
+	}
+
+	.map-canvas :global(.user-location) {
+		fill: var(--kolor-lokalizacji-uzytkownika);
+		fill-opacity: 1;
+		stroke: var(--kolor-obwodki-znacznika);
+		stroke-width: 3;
+	}
+
+	.map-canvas :global(.leaflet-control-attribution) {
+		max-width: calc(100vw - var(--rozmiar-przycisku-aparatu) - 3 * var(--odstep-sredni));
+		margin: 0 var(--odstep-maly) var(--odstep-bardzo-maly) 0;
+		padding: 1px 6px;
+		border-radius: var(--zaokraglenie-male);
+		background: var(--kolor-tla-atrybucji-mapy);
+		color: var(--kolor-tekstu-kontrolek-mapy);
+		overflow: hidden;
+		font-size: 0.5rem;
+		line-height: 1.4;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* Panel trasy zasłania dół mapy - wtedy ukrywamy atrybucję. */
+	.map-canvas.has-summary :global(.leaflet-control-attribution) {
+		display: none;
+	}
+
+	.map-canvas :global(.leaflet-control-attribution a) {
+		color: var(--kolor-linku-mapy);
+		text-decoration: none;
+	}
+
+	.map-canvas :global(.leaflet-control-attribution a:focus-visible) {
+		outline: 2px solid var(--kolor-wyroznienia);
+		outline-offset: 1px;
 	}
 </style>

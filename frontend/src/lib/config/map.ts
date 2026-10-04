@@ -7,6 +7,12 @@ export const MAP_ATTRIBUTION_HTML =
 	'<a href="https://openstreetmap.fr/" target="_blank" rel="noopener" title="Tiles hosted by OSM France">OSM France</a> | ' +
 	'<a href="https://leafletjs.com" target="_blank" rel="noopener" title="Leaflet - A JavaScript library for interactive maps">Leaflet</a>';
 
+/** Przybliżone granice Krakowa `[[płd.-zach.], [płn.-wsch.]]` - poza nimi przycisk lokalizacji wraca do trasy. */
+export const KRAKOW_BOUNDS: [[number, number], [number, number]] = [
+	[49.967, 19.792],
+	[50.126, 20.217]
+];
+
 export const DEMO_ROUTE = {
 	start: { lat: 50.05455889, lng: 19.93239849 },
 	destination: { lat: 50.0535173, lng: 19.9334305 }

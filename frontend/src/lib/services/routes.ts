@@ -5,9 +5,9 @@ import type {
 	RouteFeatureCollection,
 	RouteErrorKind,
 	RouteInfo,
-	RouteResponse
+	RouteResponse,
+	RouteTag
 } from '../types/route';
-import { DEMO_ROUTE } from '../config/map';
 import demoRoutesSnapshot from '../data/demoRoutes.json';
 
 /**
@@ -31,11 +31,7 @@ const API_BASE_URL: string | undefined =
 	(import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).trim().replace(/\/+$/, '') ||
 	undefined;
 
-export const USING_MOCK_ROUTES = !API_BASE_URL;
-
 const REQUEST_TIMEOUT_MS = 10_000;
-
-const DEMO_MATCH_RADIUS_M = 30;
 
 // Darmowe tunele ngrok zwracaja strone ostrzegawcza w HTML, chyba ze wyslyamy ten naglowek.
 const DEFAULT_HEADERS: HeadersInit = {
@@ -105,18 +101,14 @@ export async function fetchRouteComparison(
 	const error = errors[0] ?? new RouteApiError('no-route', 'Backend returned no usable route');
 	if (error.kind === 'network' || error.kind === 'server') {
 		console.warn('Routing backend unavailable, using fallback routes:', error);
-		return getFallbackRoutes(start, destination);
+		return getOfflineDemoRoutes();
 	}
 	throw error;
 }
 
-export function getFallbackRoutes(start: LatLngTuple, destination: LatLngTuple): RouteResponse {
-	const isDemo =
-		distanceMeters(start, [DEMO_ROUTE.start.lat, DEMO_ROUTE.start.lng]) <= DEMO_MATCH_RADIUS_M &&
-		distanceMeters(destination, [DEMO_ROUTE.destination.lat, DEMO_ROUTE.destination.lng]) <=
-			DEMO_MATCH_RADIUS_M;
-	const data = isDemo ? demoRoutesSnapshot : createMockFeatureCollection(start, destination);
-	return parseRouteResponse(data).map((route) => ({ ...route, fallback: true }));
+/** Bez serwera zawsze pokazujemy zapisaną trasę demo (punkty `DEMO_ROUTE` z config/map), niezależnie od wybranych punktów. */
+export function getOfflineDemoRoutes(): RouteResponse {
+	return parseRouteResponse(demoRoutesSnapshot).map((route) => ({ ...route, offline: true }));
 }
 
 // --- HTTP ---
@@ -269,17 +261,29 @@ function toRouteApiError(error: unknown): RouteApiError {
 	return new RouteApiError('server', error instanceof Error ? error.message : String(error));
 }
 
+// Teksty `info`/`warning` z backendu sa techniczne (np. wzmianki o modelu ML), wiec nie trafiaja do UI.
+// Uzytkownik widzi tylko dwie najwazniejsze cechy: schody i kostka brukowa.
+const ACCESSIBLE_ROUTE_TAGS: RouteTag[] = [
+	{ label: 'Bez schodów', tone: 'positive' },
+	{ label: 'Bez kostki brukowej', tone: 'positive' }
+];
+
+const STANDARD_ROUTE_TAGS: RouteTag[] = [
+	{ label: 'Schody', tone: 'caution' },
+	{ label: 'Kostka brukowa', tone: 'caution' }
+];
+
 function toRouteInfo({ properties, geometry }: RouteFeature, index: number): RouteInfo {
 	const safe = properties.is_wheelchair_safe;
 	return {
 		id: `${properties.route_type}-${index}`,
-		name: safe ? 'Trasa bez barier' : 'Trasa z barierami',
+		name: safe ? 'Trasa dostępna' : 'Trasa standardowa',
 		routeType: properties.route_type,
 		type: safe ? 'wheelchair' : 'standard',
 		isWheelchairSafe: safe,
 		distanceMeters: properties.distance_m,
 		durationMinutes: properties.time_minutes,
-		note: properties.warning ?? properties.info,
+		tags: safe ? ACCESSIBLE_ROUTE_TAGS : STANDARD_ROUTE_TAGS,
 		coordinates: geometry.coordinates.map(([lng, lat]) => [lat, lng])
 	};
 }
@@ -374,7 +378,7 @@ function mockFeature(
 			time_minutes: Math.round((meters / 1000 / speedKmh) * 60 * 10) / 10,
 			is_wheelchair_safe: safe,
 			...(safe
-				? { info: 'Trasa omija strefy wykryte przez ML oraz schody/krawężniki' }
+				? { info: 'Trasa omija schody i krawężniki' }
 				: { warning: 'Trasa może zawierać schody lub trudny bruk!' })
 		},
 		geometry: { type: 'LineString', coordinates: points.map(([lat, lng]) => [lng, lat]) }

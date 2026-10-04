@@ -32,6 +32,14 @@ export interface RouteFeatureCollection {
 
 export type RouteType = 'standard' | 'wheelchair';
 
+export type RouteTagTone = 'positive' | 'caution';
+
+/** Krótka, zrozumiała dla użytkownika cecha trasy (nawierzchnia, przeszkody, nachylenie). */
+export interface RouteTag {
+	label: string;
+	tone: RouteTagTone;
+}
+
 export interface RouteInfo {
 	id: string;
 	name: string;
@@ -40,8 +48,9 @@ export interface RouteInfo {
 	isWheelchairSafe: boolean;
 	distanceMeters: number;
 	durationMinutes: number;
-	note?: string;
-	fallback?: boolean;
+	tags: RouteTag[];
+	/** Zapisana trasa demonstracyjna pokazana, gdy serwer tras jest niedostępny. */
+	offline?: boolean;
 	coordinates: LatLngTuple[];
 }
 

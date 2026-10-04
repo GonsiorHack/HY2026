@@ -9,7 +9,6 @@
 	import logo from '#lib/assets/KBB/1.svg';
 	import type { Component } from 'svelte';
 	import { settings } from '../lib/state/settings.svelte';
-	import { MAP_ATTRIBUTION_HTML } from '../lib/config/map';
 	import type { Tab } from '../lib/types/navigation';
 
 	const tabs: {
@@ -28,13 +27,13 @@
 		},
 		{
 			id: 'facilities',
-			label: 'Miejsca',
+			label: 'Dla ciebie',
 			icon: 'M20 5a5 5 0 00-8 2 5 5 0 00-8-2c-5 5 8 15 8 15s17-10 8-15z',
 			component: FacilitiesTab
 		},
 		{
 			id: 'chatbot',
-			label: 'Chatbot',
+			label: 'Zapytaj',
 			icon: 'M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3z',
 			component: ChatbotTab
 		},
@@ -87,14 +86,21 @@
 
 <main class="presentation">
 	<aside class="desktop-side-panel">
-		<p class="brand-title">
-			<span class="appName">{appName}</span><span class="dot">?</span> <br />
-			<span class="name-rest"></span>
-		</p>
+		<hgroup class="brand-heading">
+			<p class="brand-title">
+				<span class="appName">{appName}</span><span class="dot">?</span>
+			</p>
+			<p class="brand-subtitle name-rest"></p>
+		</hgroup>
 		<p class="description">
 			Mobilny panel miejski wspierający dostępność i poruszanie się po Krakowie - bez barier.
 		</p>
-		<div class="badge">HackYeah2026</div>
+		<div class="badges" style="display: flex; gap: 0.5rem; flex-wrap: nowrap;">
+			<div class="badge">Python</div>
+			<div class="badge">SvelteKit</div>
+			<div class="badge">QGIS</div>
+			<div class="badge">Leaflet</div>
+		</div>
 	</aside>
 
 	<div class="mobile-viewport">
@@ -117,10 +123,8 @@
 		<section class="top-nav" inert={showSplash}>
 			<h1 class="brand">
 				<img src={logoSrc} alt={appName} class="logo-icon" />
+				<span class="appNameTopNav">{appName}</span>
 			</h1>
-			{#if activeTab === 'map'}
-				<p class="map-attribution">{@html MAP_ATTRIBUTION_HTML}</p>
-			{/if}
 		</section>
 
 		<section class="screen-body" aria-label="Zawartość karty" inert={showSplash}>
@@ -237,36 +241,17 @@
 		background: var(--kolor-tla-karty);
 	}
 
-	.map-attribution {
-		flex-basis: 100%;
-		margin: 0;
-		padding: 6px 0 2px;
-		overflow: hidden;
-		color: var(--kolor-tekstu-podstawowego);
-		font-size: 0.5625rem;
-		line-height: 1.3;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.map-attribution :global(a) {
-		color: var(--kolor-tekstu-drugorzednego);
-		text-decoration: none;
-	}
-
-	.map-attribution :global(a:hover) {
-		text-decoration: underline;
-		text-underline-offset: 2px;
-	}
-
-	.map-attribution :global(a:focus-visible) {
-		outline: 2px solid var(--kolor-wyroznienia);
-		outline-offset: 1px;
-	}
-
 	.brand {
 		display: flex;
 		align-items: center;
+	}
+
+	.appNameTopNav {
+		margin-left: 12px;
+		font-size: 1.625rem;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		line-height: 1.1;
 	}
 
 	.logo-icon {
@@ -373,7 +358,14 @@
 			color: var(--kolor-tytulu-pulpitu);
 		}
 
+		.brand-heading {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+
 		.brand-title {
+			margin: 0;
 			font-size: 60px;
 			font-weight: 800;
 			letter-spacing: -0.03em;
@@ -382,6 +374,15 @@
 
 		.brand-title .dot {
 			color: var(--kolor-kropki-pulpitu);
+		}
+
+		.brand-subtitle {
+			margin: 0;
+			color: var(--kolor-opisu-pulpitu);
+			font-size: 28px;
+			font-weight: 600;
+			letter-spacing: -0.01em;
+			line-height: 1.2;
 		}
 
 		.description {
