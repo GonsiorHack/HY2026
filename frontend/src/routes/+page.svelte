@@ -35,7 +35,8 @@
 			id: 'chatbot',
 			label: 'Zapytaj',
 			icon: 'M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3z',
-			component: ChatbotTab
+			component: ChatbotTab,
+			fullBleed: true
 		},
 		{
 			id: 'settings',
@@ -220,6 +221,9 @@
 		height: 26px;
 		border-radius: var(--zaokraglenie-pelne);
 		background: var(--kolor-czarny);
+		border: 1px solid var(--kolor-obramowania-telefonu);
+		box-shadow: 0 3px 0 var(--kolor-obramowania-telefonu);
+		margin-bottom: 6px;
 	}
 
 	.indicators {

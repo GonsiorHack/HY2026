@@ -16,9 +16,8 @@
 
 <div class="tab-content settings">
 	<section class="card settings-group" aria-labelledby="{uid}-appearance">
-		<h2 id="{uid}-appearance">Wygląd</h2>
+		<h2 id="{uid}-appearance">Motyw</h2>
 		<fieldset class="field">
-			<legend class="field-label">Motyw</legend>
 			<div class="segmented">
 				{#each themes as option (option.value)}
 					<label class="segment">

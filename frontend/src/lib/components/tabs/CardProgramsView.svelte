@@ -374,14 +374,6 @@
 {/snippet}
 
 <section class="programs" aria-labelledby="programs-title">
-	<header class="programs-header">
-		<p class="eyebrow">Kraków bez barier</p>
-		<h2 id="programs-title">Karty, zniżki i uprawnienia miejskie</h2>
-		<p class="intro">
-			Informacje o ulgach taryfowych, programach wsparcia rodzin oraz procedurach
-			urzędowych w Krakowie.
-		</p>
-	</header>
 
 	<div class="filters">
 		<div class="search">
@@ -391,7 +383,7 @@
 				<input
 					id="program-search"
 					type="search"
-					placeholder="np. MPK, przewodnik, opiekun, 70 lat"
+					placeholder="szukaj"
 					autocomplete="off"
 					bind:value={query}
 				/>
@@ -402,10 +394,18 @@
 				<button
 					type="button"
 					class="chip"
+					aria-label={item}
+					title={item}
 					aria-pressed={category === item}
 					onclick={() => (category = item)}
 				>
-					{item}
+					{item === 'Dla osób z orzeczeniem'
+						? 'Orzeczenie'
+						: item === 'Dla rodzin (KKR „N”)'
+							? 'Rodziny'
+							: item === 'Dla seniorów'
+								? 'Seniorzy'
+								: item}
 				</button>
 			{/each}
 		</div>
@@ -713,18 +713,27 @@
 
 	.chips {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
+		flex-wrap: nowrap;
+		gap: 4px;
+		overflow-x: auto;
+		scrollbar-width: none;
+		padding: 3px;
+		margin: -3px;
+	}
+
+	.chips::-webkit-scrollbar {
+		display: none;
 	}
 
 	.chip {
-		min-height: 40px;
-		padding: 0 var(--odstep-sredni);
+		flex: 1 0 auto;
+		min-height: 44px;
+		padding: 0 6px;
 		border: 1px solid var(--kolor-obramowania);
 		border-radius: var(--zaokraglenie-pelne);
 		background: var(--kolor-tla-karty);
 		color: var(--kolor-tekstu-listy);
-		font-size: 0.875rem;
+		font-size: 0.75rem;
 		font-weight: 600;
 		white-space: nowrap;
 	}

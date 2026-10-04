@@ -70,10 +70,10 @@
 				{/if}
 			</span>
 			<AddressCombobox
-				label={expanded ? 'Do' : 'Dokąd chcesz dotrzeć?'}
+				label={expanded ? 'Do' : 'Cel podróży'}
 				labelHidden={!expanded}
 				value={destination?.label ?? ''}
-				placeholder={expanded ? 'Wybierz cel podróży' : 'Dokąd chcesz dotrzeć?'}
+				placeholder={expanded ? 'Wybierz cel podróży' : 'Dokąd?'}
 				onselect={ondestinationselect}
 			/>
 		</div>

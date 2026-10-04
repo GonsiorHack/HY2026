@@ -99,11 +99,11 @@
 	);
 	const hint = $derived(
 		loading
-			? 'Wyznaczanie optymalnej trasy bez barier…'
+			? 'Wyznaczanie optymalnej trasy'
 			: locatingOrigin
 				? 'Ustalanie Twojej lokalizacji…'
 				: !start && !destination
-					? 'Wyszukaj cel lub wskaż start na mapie.'
+					? 'Wyszukaj/wskaż cel na mapie.'
 					: !start
 						? 'Wybierz punkt startowy.'
 						: !destination
