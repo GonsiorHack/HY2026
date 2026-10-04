@@ -11,6 +11,8 @@
 		formatDuration
 	} from '../../services/routes';
 	import type { LatLngTuple, RouteResponse, Waypoint } from '../../types/route';
+	import type { GeocodeResult, RoutePlace } from '../../types/geocode';
+	import { shortPlaceLabel } from '../../services/geocode';
 	import {
 		DEMO_ROUTE,
 		KRAKOW_BOUNDS,
@@ -20,6 +22,7 @@
 	} from '../../config/map';
 	import ReportObstacle from '#lib/components/ReportObstacle.svelte';
 	import RouteSheet from '#lib/components/RouteSheet.svelte';
+	import RoutePlannerPanel from '#lib/components/RoutePlannerPanel.svelte';
 	import { navigationRequest, type NavigationTarget } from '../../state/navigation.svelte';
 
 	type WaypointKind = 'start' | 'destination';
@@ -35,8 +38,18 @@
 
 	const KRAKOW_CENTER: LatLngTuple = [50.06768366766956, 19.989913515829258];
 	const DEFAULT_ZOOM = 16;
-	/* Start zastępczy dla „Nawiguj”, gdy lokalizacja jest wyłączona: TAURON Arena Kraków. */
-	const FALLBACK_START: Waypoint = { lat: 50.06757, lng: 19.99149 };
+	/* Start zastępczy, gdy lokalizacja jest wyłączona, niedostępna lub poza Krakowem. */
+	const FALLBACK_START: RoutePlace = {
+		lat: 50.068056,
+		lng: 19.984806,
+		label: 'TAURON Arena Kraków, ul. Stanisława Lema 7'
+	};
+	const USER_LOCATION_LABEL = 'Twoja lokalizacja';
+	const DEMO_START_LABEL = 'Start trasy demo';
+	const DEMO_DESTINATION_LABEL = 'Cel trasy demo';
+	const MAP_POINT_LABEL = 'Punkt na mapie';
+	/* Minimalny czas stanu „wyznaczanie trasy” po wyborze adresu - użytkownik widzi, że trasa jest liczona. */
+	const ROUTE_PROCESSING_MS = 1000;
 	const TOAST_TIMEOUT_MS = 8000;
 	const NAVIGATION_ZOOM = 18;
 	const USER_LOCATION_ZOOM = 17;
@@ -54,6 +67,9 @@
 
 	let start = $state<Waypoint | null>(null);
 	let destination = $state<Waypoint | null>(null);
+	let startLabel = $state('');
+	let destinationLabel = $state('');
+	let locatingOrigin = $state(false);
 	let routes = $state<RouteResponse | null>(null);
 	let identicalRoutes = $state(false);
 	let activeRouteId = $state<string | null>(null);
@@ -77,18 +93,26 @@
 	let abortController: AbortController | undefined;
 
 	const activeRoute = $derived(routes?.find((route) => route.id === activeRouteId));
+	const originPlace = $derived<RoutePlace | null>(start ? { ...start, label: startLabel } : null);
+	const destinationPlace = $derived<RoutePlace | null>(
+		destination ? { ...destination, label: destinationLabel } : null
+	);
 	const hint = $derived(
 		loading
-			? 'Wyznaczanie trasy…'
-			: !start
-				? 'Wybierz punkt startowy.'
-				: !destination
-					? 'Teraz wybierz cel podróży.'
-					: navigating && activeRoute
-						? `Nawigacja: ${formatDuration(activeRoute.durationMinutes)} do celu.`
-						: routes && routes.length > 1
-							? 'Przesuń punkty, aby zmienić trasę.'
-							: 'Przeciągnij A lub B, aby zmienić trasę.'
+			? 'Wyznaczanie optymalnej trasy bez barier…'
+			: locatingOrigin
+				? 'Ustalanie Twojej lokalizacji…'
+				: !start && !destination
+					? 'Wyszukaj cel lub wskaż start na mapie.'
+					: !start
+						? 'Wybierz punkt startowy.'
+						: !destination
+							? 'Teraz wybierz cel podróży.'
+							: navigating && activeRoute
+								? `Nawigacja: ${formatDuration(activeRoute.durationMinutes)} do celu.`
+								: routes && routes.length > 1
+									? 'Przesuń punkty, aby zmienić trasę.'
+									: 'Przeciągnij A lub B, aby zmienić trasę.'
 	);
 
 	$effect(() => {
@@ -244,6 +268,7 @@
 				return;
 			}
 			start = point;
+			startLabel = MAP_POINT_LABEL;
 			placeMarker('start', point);
 			toast = null;
 			if (destination) requestRoutes();
@@ -256,6 +281,7 @@
 			return;
 		}
 		destination = point;
+		destinationLabel = MAP_POINT_LABEL;
 		placeMarker('destination', point);
 		requestRoutes();
 	}
@@ -289,8 +315,13 @@
 
 	function handleMarkerDrag(kind: WaypointKind, latlng: Leaflet.LatLng) {
 		const point: Waypoint = { lat: latlng.lat, lng: latlng.lng };
-		if (kind === 'start') start = point;
-		else destination = point;
+		if (kind === 'start') {
+			start = point;
+			startLabel = MAP_POINT_LABEL;
+		} else {
+			destination = point;
+			destinationLabel = MAP_POINT_LABEL;
+		}
 
 		if (!start || !destination) return;
 		if (isTooClose(start, destination)) {
@@ -302,70 +333,205 @@
 		requestRoutes();
 	}
 
-	/** Cel wybrany poza mapą: start z lokalizacji użytkownika (gdy udostępniona i w Krakowie), w innym razie z TAURON Arena. */
+	/** Cel wybrany poza mapą („Nawiguj”): start z lokalizacji, jeśli jest już udostępniona, w innym razie z TAURON Arena. */
 	async function navigateTo(target: NavigationTarget) {
 		cancelRequest();
 		clearRoutes();
-		markersLayer?.clearLayers();
-		delete markers.start;
-		delete markers.destination;
-		start = null;
-		destination = { lat: target.lat, lng: target.lng };
-		placeMarker('destination', destination);
+		clearWaypoints();
 		toast = null;
+		setWaypoint('destination', { lat: target.lat, lng: target.lng, label: target.name });
 
 		// Karta mapy mogła być ukryta - Leaflet musi przeliczyć rozmiar przed centrowaniem.
 		await tick();
 		map?.invalidateSize();
 		map?.setView([target.lat, target.lng], DEFAULT_ZOOM);
-
-		const navigationId = requestId;
-		const userPosition = (await isLocationShared()) ? await getUserPosition() : null;
-		if (navigationId !== requestId || start || !destination) return;
-
-		const usable =
-			userPosition &&
-			L?.latLngBounds(KRAKOW_BOUNDS).contains([userPosition.lat, userPosition.lng]) &&
-			!isTooClose(userPosition, destination);
-		if (usable) {
-			showUserLocation([userPosition.lat, userPosition.lng]);
-			startNavigationFrom(userPosition);
-			return;
-		}
-		if (isTooClose(FALLBACK_START, destination)) {
-			toast = { tone: 'info', message: `Cel: ${target.name}. Dotknij mapy, aby wybrać start.` };
-			return;
-		}
-		startNavigationFrom(FALLBACK_START);
+		await routeFromResolvedOrigin({ allowPrompt: false, minDurationMs: 0 });
 	}
 
-	function startNavigationFrom(point: Waypoint) {
-		start = { ...point };
-		placeMarker('start', start);
-		requestRoutes();
+	/** Wybór celu z wyszukiwarki. Bez punktu startowego ustala go z GPS (z pytaniem o zgodę) lub z TAURON Arena. */
+	async function selectDestination(result: GeocodeResult) {
+		const place = toRoutePlace(result);
+		if (start && isTooClose(start, place)) {
+			showSamePointToast();
+			return;
+		}
+		cancelRequest();
+		clearRoutes();
+		toast = null;
+		setWaypoint('destination', place);
+		if (start) {
+			routeWithProcessingState();
+			return;
+		}
+		map?.flyTo([place.lat, place.lng], DEFAULT_ZOOM);
+		await routeFromResolvedOrigin({ allowPrompt: true, minDurationMs: ROUTE_PROCESSING_MS });
 	}
 
-	function getUserPosition(): Promise<Waypoint | null> {
+	function selectOrigin(result: GeocodeResult) {
+		const place = toRoutePlace(result);
+		if (destination && isTooClose(place, destination)) {
+			showSamePointToast();
+			return;
+		}
+		cancelRequest();
+		clearRoutes();
+		toast = null;
+		setWaypoint('start', place);
+		if (destination) routeWithProcessingState();
+		else map?.flyTo([place.lat, place.lng], DEFAULT_ZOOM);
+	}
+
+	/** Opcja „Twoja lokalizacja” w polu „Od”. Przy niepowodzeniu dotychczasowy start zostaje. */
+	async function useLocationAsOrigin() {
+		const id = requestId;
+		locatingOrigin = true;
+		const result = await getUserPosition();
+		if (id !== requestId) return;
+		locatingOrigin = false;
+
+		if ('reason' in result) {
+			toast = { tone: 'warning', message: `${result.reason} Punkt startowy bez zmian.` };
+			return;
+		}
+		const { point } = result;
+		if (!isInKrakow(point) || (destination && isTooClose(point, destination))) {
+			const reason = isInKrakow(point) ? 'Jesteś już przy celu.' : 'Jesteś poza Krakowem.';
+			toast = { tone: 'warning', message: `${reason} Punkt startowy bez zmian.` };
+			return;
+		}
+		cancelRequest();
+		clearRoutes();
+		toast = null;
+		showUserLocation([point.lat, point.lng]);
+		setWaypoint('start', { ...point, label: USER_LOCATION_LABEL });
+		if (destination) routeWithProcessingState();
+		else map?.flyTo([point.lat, point.lng], USER_LOCATION_ZOOM);
+	}
+
+	function swapWaypoints() {
+		if (!start || !destination) return;
+		const previousStart: RoutePlace = { ...start, label: startLabel };
+		setWaypoint('start', { ...destination, label: destinationLabel });
+		setWaypoint('destination', previousStart);
+		routeWithProcessingState();
+	}
+
+	/**
+	 * Ustala start dla wybranego celu: GPS w granicach Krakowa, a gdy to niemożliwe - TAURON Arena
+	 * (z komunikatem o przyczynie). `allowPrompt: false` korzysta z GPS tylko, gdy zgoda już jest.
+	 */
+	async function routeFromResolvedOrigin(options: { allowPrompt: boolean; minDurationMs: number }) {
+		if (!destination) return;
+		const id = requestId;
+		locatingOrigin = true;
+		const origin = await resolveOrigin(destination, options.allowPrompt);
+		if (id !== requestId) return;
+		locatingOrigin = false;
+		// Użytkownik mógł w międzyczasie wskazać start na mapie albo wyczyścić trasę.
+		if (start || !destination) return;
+
+		if (!origin.place) {
+			toast = { tone: 'info', message: origin.notice };
+			return;
+		}
+		if (origin.place.label === USER_LOCATION_LABEL) {
+			showUserLocation([origin.place.lat, origin.place.lng]);
+		}
+		setWaypoint('start', origin.place);
+		routeWithProcessingState(options.minDurationMs);
+		// requestRoutes czyści komunikaty synchronicznie - informację o zastępczym starcie ustawiamy po nim.
+		if (origin.notice) toast = { tone: 'info', message: origin.notice };
+	}
+
+	async function resolveOrigin(
+		target: Waypoint,
+		allowPrompt: boolean
+	): Promise<{ place: RoutePlace; notice?: string } | { place: null; notice: string }> {
+		let reason: string;
+		if (!('geolocation' in navigator)) {
+			reason = 'Lokalizacja jest niedostępna na tym urządzeniu.';
+		} else if (!allowPrompt && !(await isLocationShared())) {
+			reason = 'Lokalizacja jest wyłączona.';
+		} else {
+			const result = await getUserPosition();
+			if ('reason' in result) reason = result.reason;
+			else if (!isInKrakow(result.point)) reason = 'Jesteś poza Krakowem.';
+			else if (isTooClose(result.point, target)) reason = 'Jesteś już przy celu.';
+			else return { place: { ...result.point, label: USER_LOCATION_LABEL } };
+		}
+
+		if (isTooClose(FALLBACK_START, target)) {
+			return {
+				place: null,
+				notice: `${reason} Wskaż start na mapie lub wpisz adres w polu „Od”.`
+			};
+		}
+		return { place: FALLBACK_START, notice: `${reason} Start: TAURON Arena Kraków.` };
+	}
+
+	function getUserPosition(): Promise<{ point: Waypoint } | { reason: string }> {
+		if (!('geolocation' in navigator)) {
+			return Promise.resolve({ reason: 'Lokalizacja jest niedostępna na tym urządzeniu.' });
+		}
 		return new Promise((resolve) => {
 			navigator.geolocation.getCurrentPosition(
-				({ coords }) => resolve({ lat: coords.latitude, lng: coords.longitude }),
-				() => resolve(null),
+				({ coords }) => resolve({ point: { lat: coords.latitude, lng: coords.longitude } }),
+				(error) =>
+					resolve({
+						reason:
+							error.code === error.PERMISSION_DENIED
+								? 'Brak zgody na dostęp do lokalizacji.'
+								: 'Nie udało się ustalić lokalizacji.'
+					}),
 				{ enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 30_000 }
 			);
 		});
 	}
 
+	function setWaypoint(kind: WaypointKind, place: RoutePlace) {
+		const point: Waypoint = { lat: place.lat, lng: place.lng };
+		if (kind === 'start') {
+			start = point;
+			startLabel = place.label;
+		} else {
+			destination = point;
+			destinationLabel = place.label;
+		}
+		placeMarker(kind, point);
+	}
+
+	function clearWaypoints() {
+		markersLayer?.clearLayers();
+		delete markers.start;
+		delete markers.destination;
+		start = destination = null;
+		startLabel = destinationLabel = '';
+	}
+
+	/** Oba punkty od razu w kadrze, linia trasy pojawia się po (co najmniej) sekundzie obliczeń. */
+	function routeWithProcessingState(minDurationMs = ROUTE_PROCESSING_MS) {
+		fitToWaypoints();
+		requestRoutes(minDurationMs);
+	}
+
+	function toRoutePlace(result: GeocodeResult): RoutePlace {
+		return { lat: result.lat, lng: result.lng, label: shortPlaceLabel(result.name) };
+	}
+
+	function isInKrakow(point: Waypoint) {
+		return !!L?.latLngBounds(KRAKOW_BOUNDS).contains([point.lat, point.lng]);
+	}
+
 	function loadDemoRoute() {
 		if (!map) return;
-		start = { ...DEMO_ROUTE.start };
-		destination = { ...DEMO_ROUTE.destination };
-		placeMarker('start', start);
-		placeMarker('destination', destination);
+		cancelRequest();
+		setWaypoint('start', { ...DEMO_ROUTE.start, label: DEMO_START_LABEL });
+		setWaypoint('destination', { ...DEMO_ROUTE.destination, label: DEMO_DESTINATION_LABEL });
 		const spacing = parseFloat(getComputedStyle(mapContainer).getPropertyValue('--odstep-duzy'));
 		map.fitBounds(
 			[
-				[start.lat, start.lng],
-				[destination.lat, destination.lng]
+				[DEMO_ROUTE.start.lat, DEMO_ROUTE.start.lng],
+				[DEMO_ROUTE.destination.lat, DEMO_ROUTE.destination.lng]
 			],
 			{
 				paddingTopLeft: [spacing, spacing + (hintBar?.offsetHeight ?? 0)],
@@ -386,7 +552,7 @@
 		};
 	}
 
-	async function requestRoutes() {
+	async function requestRoutes(minDurationMs = 0) {
 		if (!start || !destination) return;
 		const from: LatLngTuple = [start.lat, start.lng];
 		const to: LatLngTuple = [destination.lat, destination.lng];
@@ -399,16 +565,17 @@
 		loading = true;
 
 		try {
-			const response = await fetchRouteComparison(from, to, controller.signal);
+			const [response] = await Promise.all([
+				fetchRouteComparison(from, to, controller.signal),
+				new Promise((resolve) => setTimeout(resolve, minDurationMs))
+			]);
 			if (currentRequest !== requestId) return;
 
 			const offline = response.some((route) => route.offline);
 			if (offline) {
 				// Trasa demo ma własne punkty A/B - przesuwamy znaczniki, żeby pasowały do linii.
-				start = { ...DEMO_ROUTE.start };
-				destination = { ...DEMO_ROUTE.destination };
-				placeMarker('start', start);
-				placeMarker('destination', destination);
+				setWaypoint('start', { ...DEMO_ROUTE.start, label: DEMO_START_LABEL });
+				setWaypoint('destination', { ...DEMO_ROUTE.destination, label: DEMO_DESTINATION_LABEL });
 			}
 
 			const { routes: visibleRoutes, identical } = collapseIdenticalRoutes(response);
@@ -458,6 +625,7 @@
 		abortController?.abort();
 		abortController = undefined;
 		loading = false;
+		locatingOrigin = false;
 	}
 
 	function clearRoutes() {
@@ -524,27 +692,43 @@
 
 	function fitToRoutes() {
 		if (!L || !map || !routes?.length) return;
-		const spacing = parseFloat(getComputedStyle(mapContainer).getPropertyValue('--odstep-duzy'));
 		const bounds = L.latLngBounds(routes.flatMap((route) => route.coordinates));
 		if (start) bounds.extend([start.lat, start.lng]);
 		if (destination) bounds.extend([destination.lat, destination.lng]);
+		map.fitBounds(bounds, fitPadding());
+	}
+
+	function fitToWaypoints() {
+		if (!L || !map || !start || !destination) return;
+		map.fitBounds(
+			L.latLngBounds([
+				[start.lat, start.lng],
+				[destination.lat, destination.lng]
+			]),
+			{ ...fitPadding(), maxZoom: NAVIGATION_ZOOM }
+		);
+	}
+
+	/** Marginesy kadrowania: panel wyszukiwania u góry, przyciski zoomu z prawej, panel tras u dołu. */
+	function fitPadding(): Leaflet.FitBoundsOptions {
+		const spacing = parseFloat(getComputedStyle(mapContainer).getPropertyValue('--odstep-duzy'));
 		const zoomEl = zoomControl?.getContainer();
 		const zoomInset = zoomEl
 			? mapContainer.getBoundingClientRect().right - zoomEl.getBoundingClientRect().left
 			: 0;
-		map.fitBounds(bounds, {
+		// Panel tras istnieje tylko, gdy są trasy - bez nich referencja wskazuje odmontowany komponent.
+		const sheetHeight = routes?.length ? (routeSheet?.collapsedHeight() ?? 0) : 0;
+		return {
 			paddingTopLeft: [spacing, spacing + (hintBar?.offsetHeight ?? 0)],
-			paddingBottomRight: [spacing + zoomInset, spacing + (routeSheet?.collapsedHeight() ?? 0)]
-		});
+			paddingBottomRight: [spacing + zoomInset, spacing + sheetHeight]
+		};
 	}
 
 	function reset() {
 		cancelRequest();
 		clearRoutes();
-		markersLayer?.clearLayers();
-		delete markers.start;
-		delete markers.destination;
-		start = destination = toast = null;
+		clearWaypoints();
+		toast = null;
 		recenterAfterReset();
 	}
 
@@ -589,6 +773,15 @@
 	<div class="map-canvas" class:has-summary={summaryHeight > 0} bind:this={mapContainer}></div>
 
 	<div class="map-top" bind:this={hintBar}>
+		<RoutePlannerPanel
+			origin={originPlace}
+			destination={destinationPlace}
+			routing={loading}
+			onoriginselect={selectOrigin}
+			ondestinationselect={selectDestination}
+			onuselocation={useLocationAsOrigin}
+			onswap={swapWaypoints}
+		/>
 		<div class="map-top-row">
 			<p class="map-hint" aria-live="polite">
 				{#if loading}<span class="spinner" aria-hidden="true"></span>{/if}
@@ -602,7 +795,7 @@
 					disabled={loading}
 					title="Wczytaj przykładową trasę do prezentacji">Demo</button
 				>
-				{#if start}
+				{#if start || destination}
 					<button class="reset-btn" type="button" onclick={reset}>Wyczyść</button>
 				{/if}
 			</div>
@@ -616,7 +809,8 @@
 				<p>{toast.message}</p>
 				<div class="toast-actions">
 					{#if toast.retry}
-						<button type="button" class="toast-btn" onclick={requestRoutes}>Spróbuj ponownie</button
+						<button type="button" class="toast-btn" onclick={() => requestRoutes()}
+							>Spróbuj ponownie</button
 						>
 					{/if}
 					<button

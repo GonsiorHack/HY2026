@@ -27,7 +27,7 @@ import demoRoutesSnapshot from '../data/demoRoutes.json';
 
 const DEFAULT_API_BASE_URL = import.meta.env.VITE_API_BASE;
 
-const API_BASE_URL: string | undefined =
+export const API_BASE_URL: string | undefined =
 	(import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).trim().replace(/\/+$/, '') ||
 	undefined;
 
@@ -181,14 +181,6 @@ async function readJson(response: Response): Promise<unknown> {
 	}
 }
 
-// --- Parsowanie ---
-
-/**
- * Sprawdza poprawnosc GeoJSON-a z backendu - pojedynczy obiekt `Feature` (dzialajace API)
- * albo `FeatureCollection` (`assets/przejazd.txt`) - i przeksztalca go na `RouteInfo[]`.
- * Nieprawidlowe lub zdegenerowane linie (np. pojedynczy punkt, gdy start == end) sa pomijane.
- */
-
 function parseRouteResponse(data: unknown): RouteResponse {
 	const features =
 		isRecord(data) && data.type === 'FeatureCollection' && Array.isArray(data.features)
@@ -232,9 +224,8 @@ export function haveSameGeometry(
 }
 
 /**
- * Usuwa trasy, ktorych geometria duplikuje wczesniejsza, aby nie rysowac nakladajacych sie polilinii.
- * Oczekuje, ze trasy bez barier beda pierwsze (tak jak zwraca `fetchRouteComparison`), wiec
- * wariant bez barier jest zachowywany. `identical` jest prawdziwe, gdy jakakolwiek trasa zostala zredukowana.
+ * Usuwa trasy, ktorych geometria duplikuje wczesniejsza, aby nie rysowac nakladajacych sie lini.
+ * Oczekuje, ze trasy bez barier beda pierwsze
  */
 export function collapseIdenticalRoutes(routes: RouteInfo[]): {
 	routes: RouteInfo[];
