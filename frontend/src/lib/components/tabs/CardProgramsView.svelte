@@ -378,7 +378,7 @@
 		<p class="eyebrow">Kraków bez barier</p>
 		<h2 id="programs-title">Karty, zniżki i uprawnienia miejskie</h2>
 		<p class="intro">
-			Rzetelne informacje o ulgach taryfowych, programach wsparcia rodzin oraz procedurach
+			Informacje o ulgach taryfowych, programach wsparcia rodzin oraz procedurach
 			urzędowych w Krakowie.
 		</p>
 	</header>

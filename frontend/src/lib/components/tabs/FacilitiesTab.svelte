@@ -14,7 +14,6 @@
 	type View = 'places' | 'cards';
 	type SectionIcon = AmenityIconType | 'door' | 'hanger';
 
-	/* Zewnętrzne akcje są opcjonalne - bez nich komponent sam przekazuje cel do mapy i otwiera okno szczegółów. */
 	let {
 		onNavigate,
 		onOpenDetails
@@ -28,7 +27,6 @@
 	)[];
 	type CategoryFilter = (typeof CATEGORIES)[number];
 
-	/* Dane z deklaracji i audytów dostępności - docelowo z API miasta. Odległości liczone od centrum mapy. */
 	const FACILITIES: Facility[] = [
 		{
 			id: 'tauron-arena',
@@ -241,7 +239,6 @@
 		cta: string;
 	}
 
-	/* Ogólne oferty bez nazw konkretnych firm - miejsce na przyszłą reklamę partnera miasta. */
 	const SPONSORED_OFFERS: SponsoredOffer[] = [
 		{
 			kind: 'hotel',
@@ -324,7 +321,6 @@
 			.join(' ');
 	}
 
-	/* Domyślnie: cel trafia do wspólnego stanu, a mapa sama wyznacza trasę po przełączeniu karty. */
 	async function handleNavigate(facility: Facility) {
 		closeDetailsModal(false);
 		if (onNavigate) {
@@ -354,8 +350,7 @@
 		if (restoreFocus) returnFocusEl?.focus();
 		returnFocusEl = null;
 	}
-
-	/* Pułapka fokusu: Tab/Shift+Tab krąży wyłącznie po elementach okna. */
+	
 	function handleDialogKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape') {
 			event.preventDefault();
@@ -378,7 +373,6 @@
 		}
 	}
 
-	/* Blokada przewijania listy pod oknem - szukamy najbliższego przewijanego przodka. */
 	$effect(() => {
 		if (!modalFacility || !dialogEl) return;
 		let scroller: HTMLElement | null = dialogEl.parentElement;
@@ -477,7 +471,6 @@
 	</svg>
 {/snippet}
 
-<!-- Okrągła plakietka weryfikacji obok nazwy; źródło w dymku po najechaniu, fokusie lub dotknięciu. -->
 {#snippet verifyBadge(item: Facility)}
 	{@const tipId = `verify-tip-${item.id}`}
 	<span
@@ -513,19 +506,17 @@
 		<p class="intro">Odkrywaj miejsca i infrastrukturę dostosowaną do Twoich potrzeb.</p>
 	</header>
 
-	<!-- Przełącznik widoków: przyciski z aria-pressed zamiast pełnego wzorca tablist. -->
 	<div class="segmented" role="group" aria-label="Rodzaj udogodnień">
 		<button type="button" aria-pressed={view === 'places'} onclick={() => (view = 'places')}>
-			Miejsca i obiekty
+			Miejsca
 		</button>
 		<button type="button" aria-pressed={view === 'cards'} onclick={() => (view = 'cards')}>
-			Karty i zniżki
+			Zniżki
 		</button>
 	</div>
 
 	{#if view === 'places'}
 		<section class="filters" aria-label="Filtry">
-			<!-- Chipy mają identyczny rozmiar w obu stanach, więc zmiana filtra nie przestawia wierszy. -->
 			<div class="chips" role="group" aria-label="Kategoria">
 				{#each CATEGORIES as name (name)}
 					<button

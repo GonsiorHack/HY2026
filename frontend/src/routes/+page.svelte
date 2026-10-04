@@ -273,7 +273,6 @@
 	.screen-body {
 		flex: 1;
 		overflow-y: auto;
-		/* Przewijanie działa, ale bez widocznego paska (jak w aplikacji mobilnej). */
 		scrollbar-width: none;
 	}
 
@@ -290,7 +289,6 @@
 		display: block;
 	}
 
-	/* Mapa wypełnia cały obszar między paskami nawigacji bez marginesów. */
 	.tab-panel.full-bleed {
 		height: 100%;
 		padding: 0;

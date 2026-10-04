@@ -4,15 +4,28 @@
 
 	let { onfinish }: { onfinish: () => void } = $props();
 
+	/* Długość animacji wejścia (5,17 s) z zapasem na wolne łącze. */
+	const INTRO_DURATION_MS = 5200;
 	const MAX_DURATION_MS = 9000;
 
 	let videoElement: HTMLVideoElement;
 	let finished = false;
+	/* Safari w trybie oszczędzania energii blokuje autoodtwarzanie wideo - wtedy pokazujemy animowany WebP, który iOS odtwarza zawsze. */
+	let useImageFallback = $state(false);
 
 	function finish() {
 		if (finished) return;
 		finished = true;
 		onfinish();
+	}
+
+	let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function showImageFallback() {
+		if (finished || useImageFallback) return;
+		useImageFallback = true;
+		videoElement?.pause();
+		fallbackTimer = setTimeout(finish, INTRO_DURATION_MS);
 	}
 
 	onMount(() => {
@@ -23,25 +36,23 @@
 
 		videoElement.muted = true;
 		videoElement.defaultMuted = true;
+		videoElement.playsInline = true;
 
-		function startPlayback() {
-			// case: autoplay blocked (np. Low Power Mode); prosto do apki
-			videoElement.play().catch((err) => {
-				console.warn('Splash video autoplay rejected:', err);
-				finish();
-			});
-		}
+		/* play() od razu - iOS często ignoruje preload i nie wyśle „loadeddata”, dopóki odtwarzanie nie ruszy. */
+		videoElement.play()?.catch((err: DOMException) => {
+			if (err.name !== 'AbortError') showImageFallback();
+		});
 
-		if (videoElement.readyState >= 2) {
-			startPlayback();
-		} else {
-			videoElement.addEventListener('loadeddata', startPlayback, { once: true });
-		}
+		/* Część wersji Safari nie odrzuca play(), tylko zostawia film zatrzymany; buforowanie na wolnym łączu nie włącza zastępstwa. */
+		const stallCheck = setTimeout(() => {
+			if (videoElement.paused && !videoElement.ended) showImageFallback();
+		}, 1200);
 
 		const timeout = setTimeout(finish, MAX_DURATION_MS);
 		return () => {
 			clearTimeout(timeout);
-			videoElement.removeEventListener('loadeddata', startPlayback);
+			clearTimeout(stallCheck);
+			clearTimeout(fallbackTimer);
 		};
 	});
 </script>
@@ -49,19 +60,23 @@
 <div class="splash" role="status" aria-label="Uruchamianie aplikacji" out:fade={{ duration: 300 }}>
 	<video
 		bind:this={videoElement}
+		class:hidden={useImageFallback}
 		src="/animacjaWejscia.mp4"
+		poster="/animacjaWejscia-poster.jpg"
 		autoplay
 		muted
 		playsinline
 		webkit-playsinline
+		disablepictureinpicture
+		disableremoteplayback
 		preload="auto"
 		aria-hidden="true"
 		onended={finish}
-		onerror={(e) => {
-			console.error('Video error:', e);
-			finish();
-		}}
+		onerror={showImageFallback}
 	></video>
+	{#if useImageFallback}
+		<img src="/animacjaWejscia.webp" alt="" aria-hidden="true" />
+	{/if}
 	<button class="skip-btn" type="button" onclick={finish}>Pomiń</button>
 </div>
 
@@ -73,10 +88,29 @@
 		background: var(--kolor-tla-ekranu-startowego);
 	}
 
-	video {
+	video,
+	img {
+		display: block;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+
+	img {
+		position: absolute;
+		inset: 0;
+	}
+
+	.hidden {
+		visibility: hidden;
+	}
+
+	/* Ukrywa natywny przycisk odtwarzania Safari, który pojawia się, gdy autoodtwarzanie jest zablokowane. */
+	video::-webkit-media-controls,
+	video::-webkit-media-controls-start-playback-button,
+	video::-webkit-media-controls-overlay-play-button {
+		display: none !important;
+		-webkit-appearance: none;
 	}
 
 	.skip-btn {
