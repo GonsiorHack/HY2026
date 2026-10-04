@@ -4,78 +4,164 @@
 
 	let { onfinish }: { onfinish: () => void } = $props();
 
-	/* Długość animacji wejścia (5,17 s) z zapasem na wolne łącze. */
 	const INTRO_DURATION_MS = 5200;
-	const MAX_DURATION_MS = 9000;
+	const LOAD_TIMEOUT_MS = 9000;
+	const VIDEO_STALL_MS = 2500;
 
-	let videoElement: HTMLVideoElement;
+	let videoElement = $state<HTMLVideoElement>();
 	let finished = false;
-	/* Safari w trybie oszczędzania energii blokuje autoodtwarzanie wideo - wtedy pokazujemy animowany WebP, który iOS odtwarza zawsze. */
-	let useImageFallback = $state(false);
+	let mode = $state<'video' | 'image' | 'poster'>('poster');
+	let initialized = $state(false);
+	let imageSequence = $state(0);
+	let imageReady = false;
+	let visibleElapsed = 0;
+	let stalledElapsed = 0;
+	let lastVideoTime = 0;
 
 	function finish() {
 		if (finished) return;
 		finished = true;
+		videoElement?.pause();
 		onfinish();
 	}
 
-	let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
-
 	function showImageFallback() {
-		if (finished || useImageFallback) return;
-		useImageFallback = true;
+		if (finished || mode !== 'video') return;
+		mode = 'image';
+		imageReady = false;
+		visibleElapsed = 0;
 		videoElement?.pause();
-		fallbackTimer = setTimeout(finish, INTRO_DURATION_MS);
+	}
+
+	function handleImageLoad() {
+		imageReady = true;
+		visibleElapsed = 0;
+	}
+
+	function handleImageError() {
+		console.warn('Nie udało się załadować obrazu ekranu powitalnego.');
+		if (mode === 'image') {
+			mode = 'poster';
+			imageReady = false;
+			visibleElapsed = 0;
+		} else {
+			// Nawet przy braku plakatu pozostawiamy ekran z przyciskiem „Pomiń”.
+			imageReady = true;
+			visibleElapsed = 0;
+		}
+	}
+
+	function handleVideoEnded() {
+		if (finished || mode !== 'video' || document.hidden || !videoElement) return;
+		if (lastVideoTime > 0 && videoElement.currentTime >= INTRO_DURATION_MS / 1000 - 0.2) {
+			finish();
+		} else {
+			showImageFallback();
+		}
 	}
 
 	onMount(() => {
-		if (matchMedia('(prefers-reduced-motion: reduce)').matches || videoElement.ended) {
-			finish();
-			return;
+		const userAgent = navigator.userAgent;
+		const isIOS =
+			/iPad|iPhone|iPod/.test(userAgent) ||
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+		const isSafari =
+			/AppleWebKit/.test(userAgent) && !/Chrome|Chromium|Edg|OPR|Android/.test(userAgent);
+		const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+		mode = reducedMotion ? 'poster' : isIOS || isSafari ? 'image' : 'video';
+		initialized = !document.hidden;
+
+		function playVideo() {
+			if (finished || mode !== 'video' || !videoElement || document.hidden) return;
+			videoElement.muted = true;
+			videoElement.defaultMuted = true;
+			videoElement.playsInline = true;
+			videoElement.play()?.catch((error: unknown) => {
+				if (finished || mode !== 'video' || document.hidden) return;
+				console.warn('Autoodtwarzanie intro niedostępne; używam animacji WebP.', error);
+				showImageFallback();
+			});
 		}
 
-		videoElement.muted = true;
-		videoElement.defaultMuted = true;
-		videoElement.playsInline = true;
+		let lastTick = performance.now();
+		function handleVisibilityChange() {
+			lastTick = performance.now();
+			if (document.hidden) videoElement?.pause();
+			else {
+				initialized = true;
+				// Animowanego obrazu nie można wstrzymać, więc po powrocie odtwarzamy go od początku.
+				if (mode === 'image') {
+					imageReady = false;
+					visibleElapsed = 0;
+					imageSequence += 1;
+				}
+				playVideo();
+			}
+		}
+		document.addEventListener('visibilitychange', handleVisibilityChange);
 
-		/* play() od razu - iOS często ignoruje preload i nie wyśle „loadeddata”, dopóki odtwarzanie nie ruszy. */
-		videoElement.play()?.catch((err: DOMException) => {
-			if (err.name !== 'AbortError') showImageFallback();
-		});
+		const clock = setInterval(() => {
+			const now = performance.now();
+			const elapsed = now - lastTick;
+			lastTick = now;
+			if (finished || document.hidden) return;
 
-		/* Część wersji Safari nie odrzuca play(), tylko zostawia film zatrzymany; buforowanie na wolnym łączu nie włącza zastępstwa. */
-		const stallCheck = setTimeout(() => {
-			if (videoElement.paused && !videoElement.ended) showImageFallback();
-		}, 1200);
+			if (mode === 'video') {
+				if (!videoElement) return;
+				if (videoElement.currentTime > lastVideoTime) stalledElapsed = 0;
+				else stalledElapsed += elapsed;
+				lastVideoTime = videoElement.currentTime;
+				if (stalledElapsed >= VIDEO_STALL_MS) showImageFallback();
+				else if (videoElement.paused) playVideo();
+				return;
+			}
 
-		const timeout = setTimeout(finish, MAX_DURATION_MS);
+			visibleElapsed += elapsed;
+			if (imageReady) {
+				if (visibleElapsed >= INTRO_DURATION_MS) finish();
+			} else if (visibleElapsed >= LOAD_TIMEOUT_MS) {
+				handleImageError();
+			}
+		}, 100);
+
 		return () => {
-			clearTimeout(timeout);
-			clearTimeout(stallCheck);
-			clearTimeout(fallbackTimer);
+			finished = true;
+			clearInterval(clock);
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+			videoElement?.pause();
 		};
 	});
 </script>
 
 <div class="splash" role="status" aria-label="Uruchamianie aplikacji" out:fade={{ duration: 300 }}>
-	<video
-		bind:this={videoElement}
-		class:hidden={useImageFallback}
-		src="/animacjaWejscia.mp4"
-		poster="/animacjaWejscia-poster.jpg"
-		autoplay
-		muted
-		playsinline
-		webkit-playsinline
-		disablepictureinpicture
-		disableremoteplayback
-		preload="auto"
-		aria-hidden="true"
-		onended={finish}
-		onerror={showImageFallback}
-	></video>
-	{#if useImageFallback}
-		<img src="/animacjaWejscia.webp" alt="" aria-hidden="true" />
+	{#if initialized && mode === 'video'}
+		<video
+			bind:this={videoElement}
+			src="/animacjaWejscia.mp4"
+			poster="/animacjaWejscia-poster.jpg"
+			muted
+			playsinline
+			webkit-playsinline
+			disablepictureinpicture
+			disableremoteplayback
+			preload="auto"
+			aria-hidden="true"
+			onended={handleVideoEnded}
+			onerror={showImageFallback}
+		></video>
+	{:else if initialized}
+		{#key imageSequence}
+			<img
+				src={mode === 'image'
+					? `/animacjaWejscia.webp?intro=${imageSequence}`
+					: '/animacjaWejscia-poster.jpg'}
+				alt=""
+				aria-hidden="true"
+				onload={handleImageLoad}
+				onerror={handleImageError}
+			/>
+		{/key}
 	{/if}
 	<button class="skip-btn" type="button" onclick={finish}>Pomiń</button>
 </div>
@@ -101,11 +187,6 @@
 		inset: 0;
 	}
 
-	.hidden {
-		visibility: hidden;
-	}
-
-	/* Ukrywa natywny przycisk odtwarzania Safari, który pojawia się, gdy autoodtwarzanie jest zablokowane. */
 	video::-webkit-media-controls,
 	video::-webkit-media-controls-start-playback-button,
 	video::-webkit-media-controls-overlay-play-button {

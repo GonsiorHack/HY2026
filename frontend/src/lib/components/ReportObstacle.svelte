@@ -4,7 +4,7 @@
 	const PROCESSING_MS = 2000;
 	const MENU_TEXT = 'Zgłoś przeszkodę na trasie.';
 	const COMMUNITY_TEXT =
-		'Dzięki Tobie ktoś inny bezpiecznie dotrze do celu. Razem tworzymy Kraków bez barier.';
+		'Dzięki Tobie ktoś inny bezpiecznie dotrze do celu.' + <br> + 'Razem tworzymy Kraków bez barier.';
 
 	type Phase = 'idle' | 'menu' | 'processing' | 'success';
 
