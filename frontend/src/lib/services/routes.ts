@@ -25,7 +25,7 @@ import demoRoutesSnapshot from '../data/demoRoutes.json';
  * Ustawienie `VITE_API_BASE_URL=` (pusta wartosc) wlacza dane testowe (mock).
  */
 
-const DEFAULT_API_BASE_URL = 'https://opacity-hypnotism-footless.ngrok-free.dev';
+const DEFAULT_API_BASE_URL = import.meta.env.VITE_API_BASE;
 
 const API_BASE_URL: string | undefined =
 	(import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).trim().replace(/\/+$/, '') ||
