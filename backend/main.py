@@ -214,3 +214,36 @@ def get_safe_wheelchair_route(start_lng: float, start_lat: float, end_lng: float
         },
         "geometry": feature["geometry"]
     }
+
+@app.get("/api/geocode")
+def geocode_address(query: str):
+    if not query or len(query.strip()) < 3:
+        raise HTTPException(status_code=400, detail="Query is too short.")
+
+    search_query = query if "kraków" in query.lower() or "krakow" in query.lower() else f"{query}, Kraków"
+
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {
+        "q": search_query,
+        "format": "json",
+        "limit": 1,
+        "countrycodes": "pl",
+        "bounded": 1
+    }
+    headers = {
+        "User-Agent": "CzyPrzejade-Krakow-Accessibility-App"
+    }
+
+    try:
+        res = requests.get(url, params=params, headers=headers, timeout=5)
+        if res.status_code == 200 and res.json():
+            data = res.json()[0]
+            return {
+                "name": data.get("display_name"),
+                "lat": float(data["lat"]),
+                "lng": float(data["lon"])
+            }
+        else:
+            raise HTTPException(status_code=404, detail="The specified address was not found in Krakow.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Geocoding service error: {str(e)}")
