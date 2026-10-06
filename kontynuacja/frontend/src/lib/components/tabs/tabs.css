@@ -1,0 +1,42 @@
+.tab-content {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.card {
+	padding: 14px;
+	background: var(--kolor-tla-karty);
+	border: 1px solid var(--kolor-obramowania);
+	border-radius: var(--zaokraglenie-duze);
+	box-shadow: var(--cien-karty);
+}
+
+.alert-card {
+	display: flex;
+	gap: 12px;
+	background: var(--kolor-tla-ostrzezenia);
+	border-color: var(--kolor-obramowania-ostrzezenia);
+	color: var(--kolor-tekstu-ostrzezenia);
+}
+
+.action-btn {
+	width: 100%;
+	margin-top: 10px;
+	padding: 12px;
+	border: none;
+	border-radius: var(--zaokraglenie-srednie);
+	background: var(--kolor-wyroznienia);
+	color: var(--kolor-tekstu-na-wyroznieniu);
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.chat-mock .bubble {
+	display: inline-block;
+	margin-top: 8px;
+	padding: 10px 14px;
+	border-radius: 14px;
+	background: var(--kolor-tla-elementu-drugorzednego);
+	font-size: 0.875rem;
+}
