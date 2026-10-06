@@ -1,0 +1,4 @@
+forbidden_zones
+.env
+.idea
+__pycache__
