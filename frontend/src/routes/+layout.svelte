@@ -1,11 +1,12 @@
 <script lang="ts">
 	import '@fontsource-variable/inter';
-	import '../lib/components/tabs/tabs.css';
-	import '../lib/theme.css';
-	import './layout.css';
-	import favicon from '#lib/assets/favicon.svg';
+	import '#lib/styles/shared.css';
+	import '#lib/styles/theme.css';
+	import '#lib/styles/brand.css';
+	import '#lib/styles/tailwind.css';
+	import '#lib/styles/base.css';
 	import { onMount } from 'svelte';
-	import { settings } from '../lib/state/settings.svelte';
+	import { settings } from '#lib/features/settings/state/settings.svelte.ts';
 
 	let { children } = $props();
 
@@ -28,7 +29,7 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<link rel="icon" type="image/svg+xml" href="/branding/favicon.svg" />
 </svelte:head>
 
 {@render children()}

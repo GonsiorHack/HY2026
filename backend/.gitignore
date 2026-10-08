@@ -2,3 +2,5 @@ forbidden_zones
 .env
 .idea
 __pycache__
+.venv/
+*.py[cod]

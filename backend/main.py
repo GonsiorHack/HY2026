@@ -5,20 +5,15 @@ from typing import List, Dict, Any
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 import requests
+from chat.router import install_chat
 
 app = FastAPI(title="WheelRoute - Krakow Accessibility API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+install_chat(app)
 
-ORS_API_KEY = (Path(__file__).parent / ".env").read_text(encoding="utf-8").strip()
+ORS_KEY_FILE = Path(__file__).parent / ".env"
+ORS_API_KEY = ORS_KEY_FILE.read_text(encoding="utf-8").strip() if ORS_KEY_FILE.exists() else ""
 ORS_BASE_URL = "https://api.openrouteservice.org/v2/directions"
 
 ANALYZED_DATA_DIR = Path("../machinelearning/analyzed_data")
@@ -114,6 +109,8 @@ def get_zones():
 
 @app.get("/api/route-standard")
 def get_standard_route(start_lng: float, start_lat: float, end_lng: float, end_lat: float):
+    if not ORS_API_KEY:
+        raise HTTPException(status_code=503, detail="Brak konfiguracji klucza OpenRouteService.")
     c_start_lng, c_start_lat = (start_lat, start_lng) if start_lng > start_lat else (start_lng, start_lat)
     c_end_lng, c_end_lat = (end_lat, end_lng) if end_lng > end_lat else (end_lng, end_lat)
 
@@ -165,6 +162,8 @@ def get_standard_route(start_lng: float, start_lat: float, end_lng: float, end_l
 
 @app.get("/api/route")
 def get_safe_wheelchair_route(start_lng: float, start_lat: float, end_lng: float, end_lat: float):
+    if not ORS_API_KEY:
+        raise HTTPException(status_code=503, detail="Brak konfiguracji klucza OpenRouteService.")
     c_start_lng, c_start_lat = (start_lat, start_lng) if start_lng > start_lat else (start_lng, start_lat)
     c_end_lng, c_end_lat = (end_lat, end_lng) if end_lng > end_lat else (end_lng, end_lat)
 
