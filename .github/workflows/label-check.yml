@@ -1,0 +1,28 @@
+name: Check PR Labels
+
+on:
+  pull_request:
+    types:
+      - opened
+      - labeled
+      - unlabeled
+      - synchronize
+
+jobs:
+  verify-labels:
+    name: Verify Required Labels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate type label
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels) }}
+        run: |
+          echo "$LABELS_JSON" | jq -e 'map(.name) | any(test("^type:"))' > /dev/null
+          
+          if [ $? -eq 0 ]; then
+            echo "Success: PR contains a valid 'type:' label."
+            exit 0
+          else
+            echo "Error: Pull Request must have at least one label starting with 'type:' (e.g., 'type: bug', 'type: feature')."
+            exit 1
+          fi
