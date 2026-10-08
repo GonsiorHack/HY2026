@@ -147,7 +147,7 @@ Tradycyjna, inwazyjna reklama banerowa obniża czytelność nawigacji. Zamiast n
 ## 👥 Poznaj Nasz [Team](https://github.com/GonsiorHack)
 
 <p align="right">
-  <img src="https://skillicons.dev/icons?i=ts,svelte,figma" height="40" style="vertical-align: middle;" alt="TypeScript, Svelte, Vite" />
+  <img src="https://skillicons.dev/icons?i=ts,svelte,python" height="40" style="vertical-align: middle;" alt="TypeScript, Svelte, AI models" />
   &nbsp;&nbsp;
   <a href="https://github.com/sh3kda" target="_blank"><strong>@sh3kda</strong></a>
   &nbsp;&nbsp;
@@ -155,7 +155,7 @@ Tradycyjna, inwazyjna reklama banerowa obniża czytelność nawigacji. Zamiast n
     <img src="https://github.com/sh3kda.png" width="56" height="56" style="border-radius: 50%; vertical-align: middle;" alt="sh3kda" />
   </a>
   <br />
-  <em>Fullstack Development • Software Architecture • UI/UX Design</em> ↲&nbsp;&nbsp;
+ <em>Fullstack Development • LLM Integration • Deployment </em>↲&nbsp;&nbsp;
 </p>
 
 ---
@@ -169,7 +169,7 @@ Tradycyjna, inwazyjna reklama banerowa obniża czytelność nawigacji. Zamiast n
     <img src="https://github.com/GaskaPiotr.png" width="56" height="56" style="border-radius: 50%; vertical-align: middle;" alt="GaskaPiotr" />
   </a>
   <br />
-  <em>AI / Computer Vision Pipelines • Backend Core • Databases</em> ↲&nbsp;&nbsp;
+  <em>Geospatial AI • Backend Engineering • Routing Algorithms</em>↲&nbsp;&nbsp;
 </p>
 
 ---
@@ -183,5 +183,5 @@ Tradycyjna, inwazyjna reklama banerowa obniża czytelność nawigacji. Zamiast n
     <img src="https://github.com/Antoine052.png" width="56" height="56" style="border-radius: 50%; vertical-align: middle;" alt="Antoine052" />
   </a>
   <br />
-  <em>Data Engineering • Spatial Data Sourcing & GIS Processing</em> ↲&nbsp;&nbsp;
+  <em>Spatial Data Science • GIS Engineering • Data Sourcing</em> ↲&nbsp;&nbsp;
 </p>
