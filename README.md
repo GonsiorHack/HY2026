@@ -144,6 +144,20 @@ Tradycyjna, inwazyjna reklama banerowa obniża czytelność nawigacji. Zamiast n
 
 ---
 
+---
+
+## Społeczność i Koordynacja
+
+Rozwijamy projekt w modelu otwartego dialogu ze środowiskiem akademickim, deweloperami oraz pasjonatami technologii asystujących (Tech for Good). Serwer Discord stanowi przestrzeń roboczą dla bieżącej koordynacji technicznej i wymiany wiedzy:
+<br>
+<p align="center">
+  <a href="https://discord.gg/AFcjXn9h" target="_blank">
+    <img src="https://img.shields.io/badge/Discord-Dołącz_do_Społeczności-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord czyPrzejade" />
+  </a>
+</p>
+
+---
+
 ## 👥 Poznaj Nasz [Team](https://github.com/GonsiorHack)
 
 <p align="right">
